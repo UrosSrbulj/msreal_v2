@@ -33,8 +33,8 @@ MODULE_DESCRIPTION("Test Driver for MATRIX MULTIPLIER.");
 static int matmul_probe(struct platform_device *pdev);
 static int matmul_open(struct inode *i, struct file *f);
 static int matmul_close(struct inode *i, struct file *f);
-static ssize_t matmul_read(struct file *f, char __user *buffer, size_t length, loff_t *offset);
-static ssize_t matmul_write(struct file *f, const char __user *buffer, size_t length, loff_t *offset);
+static ssize_t matmul_read(struct file *f, char __user *buf, size_t len, loff_t *off);
+static ssize_t matmul_write(struct file *f, const char __user *buf, size_t length, loff_t *off);
 static int __init matmul_init(void);
 static void __exit matmul_exit(void);
 static int matmul_remove(struct platform_device *pdev);
@@ -74,14 +74,8 @@ unsigned int uneti_brojevi_c[BUFF_SIZE];
 unsigned int uneti_brojevi_c_matrix[8][8];
 
 
-
-
-
-
-
-
-
-struct file_operations my_fops =
+//*********************OPERACIJE NAD NODE FAJLOVIMA*************************************
+static struct file_operations my_fops =
 {
 	.owner = THIS_MODULE,
 	.open = matmul_open,
@@ -111,25 +105,6 @@ static struct platform_driver matmul_driver = {
 };
 
 MODULE_DEVICE_TABLE(of, matmul_of_match);
-
-
-
-
-
-//******************************* OPEN  *************************************//
-static int matmul_open(struct inode *i, struct file *f)
-{
-  printk(KERN_INFO "matmul opened\n");
-  return 0;
-}
-//################################## CLOSE ########################################
-static int matmul_close(struct inode *i, struct file *f)
-{
-  printk(KERN_INFO "matmul closed\n");
-  return 0;
-}
-
-///################################### PROBE ###############################
 
 
 static int matmul_probe(struct platform_device *pdev)
@@ -396,6 +371,23 @@ static int matmul_remove(struct platform_device *pdev)
   return 0;
 }
 
+//******************************* OPEN  *************************************//
+static int matmul_open(struct inode *i, struct file *f)
+{
+  printk(KERN_INFO "matmul opened\n");
+  return 0;
+}
+
+//################################## CLOSE ########################################
+static int matmul_close(struct inode *i, struct file *f)
+{
+  printk(KERN_INFO "matmul closed\n");
+  return 0;
+}
+
+///################################### PROBE ###############################
+
+
 ssize_t matmul_read(struct file *f, char __user *buffer, size_t length, loff_t *offset) 
 {
     unsigned int ready_r,start_r,n_r,m_r,p_r;
@@ -656,69 +648,77 @@ ssize_t matmul_write(struct file *f, const char __user *buffer, size_t length, l
 static int __init matmul_init(void)
 {
     int ret = 0;
-	
-    ret = alloc_chrdev_region(&my_dev_id, 0, 4, "matmul");
-    if (ret){
-        printk(KERN_ERR "failed to register char device\n");	
-        return ret;
-    }
-    printk(KERN_INFO "char device region allocated\n");
+    int_cnt = 0;
 
-    my_class = class_create(THIS_MODULE, "matmul_class");
-    if (my_class == NULL){
-        printk(KERN_ERR "failed to create class\n");
-        goto fail_0;
-    }
-    printk(KERN_INFO "class created\n");
-
-    if (device_create(my_class, NULL, MKDEV(MAJOR(my_dev_id), 0), NULL, "bram_a") == NULL)
-    {
-        printk(KERN_ERR "failed to create device\n");
-        goto fail_1;
-    }
-    printk(KERN_INFO "device created bram_a\n");
-
-    if (device_create(my_class, NULL, MKDEV(MAJOR(my_dev_id), 1), NULL, "bram_b") == NULL)
-    {
-        printk(KERN_ERR "failed to create device\n");
-        goto fail_1;
-    }
-    printk(KERN_INFO "device created bram_b\n");
-
-    if (device_create(my_class, NULL, MKDEV(MAJOR(my_dev_id), 2), NULL, "bram_c") == NULL)
-    {
-        printk(KERN_ERR "failed to create device\n");
-        goto fail_1;
-    }
-    printk(KERN_INFO "device created bram_c\n");
-
-    if (device_create(my_class, NULL, MKDEV(MAJOR(my_dev_id), 3), NULL, "matmul") == NULL)
-    {
-        printk(KERN_ERR "failed to create device\n");
-        goto fail_1;
-    }
-    printk(KERN_INFO "device created matmul\n");
-
-    my_cdev = cdev_alloc();
-	my_cdev->ops = &my_fops;
-	my_cdev->owner = THIS_MODULE;
-
-    if (cdev_add(my_cdev, my_dev_id, 4) == -1)  
-	{
-        printk(KERN_ERR "failed to add cdev\n");
-		goto fail_2;
-	}
-    printk(KERN_INFO "cdev added\n");
-
-    return 0;
- 
-   fail_2:
-        device_destroy(my_class, my_dev_id );
-   fail_1:
-        class_destroy(my_class);
-   fail_0:
-        unregister_chrdev_region(my_dev_id, 1);
+  printk(KERN_INFO "matmul_init: Initialize Module \"%s\"\n", DEVICE_NAME);
+  ret = alloc_chrdev_region(&my_dev_id, 0, 4, "matmul_region");
+  if (ret)
+  {
+    printk(KERN_ALERT "<1>Failed CHRDEV!.\n");
     return -1;
+  }
+  printk(KERN_INFO "Succ CHRDEV!.\n");
+  my_class = class_create(THIS_MODULE, "matmul_drv");
+  if (my_class == NULL)
+  {
+    printk(KERN_ALERT "<1>Failed class create!.\n");
+    goto fail_0;
+  }
+  printk(KERN_INFO "Succ class chardev1 create!.\n");
+  
+   printk(KERN_INFO "created nod %d\n", 1);
+    
+    my_device = device_create(my_class, NULL, MKDEV(MAJOR(my_dev_id), 0), NULL, "bram_a");
+  
+  if (my_device == NULL)
+  {
+    goto fail_1;
+  }
+  printk(KERN_INFO "created nod %d\n", 2);
+   my_device = device_create(my_class, NULL, MKDEV(MAJOR(my_dev_id),1), NULL, "bram_b");
+   
+  if (my_device == NULL)
+  {
+    goto fail_1;
+  }
+  
+    printk(KERN_INFO "created nod %d\n", 3);
+   my_device = device_create(my_class, NULL, MKDEV(MAJOR(my_dev_id),2), NULL, "bram_c");
+   
+  if (my_device == NULL)
+  {
+    goto fail_1;
+  }
+
+    printk(KERN_INFO "created nod %d\n", 4);
+   my_device = device_create(my_class, NULL, MKDEV(MAJOR(my_dev_id),3), NULL, "matmul");
+   
+  if (my_device == NULL)
+  {
+    goto fail_1;
+  }
+  printk(KERN_INFO "Device created.\n");
+
+  my_cdev = cdev_alloc();	
+  my_cdev->ops = &my_fops;
+  my_cdev->owner = THIS_MODULE;
+  ret = cdev_add(my_cdev, my_dev_id, 4);
+  if (ret)
+  {
+    printk(KERN_ERR "matmul_init: Failed to add cdev\n");
+    goto fail_2;
+  }
+  printk(KERN_INFO "matmul device init.\n");
+
+  return platform_driver_register(&matmul_driver);
+
+ fail_2:
+  device_destroy(my_class, my_dev_id );
+ fail_1:
+  class_destroy(my_class);
+ fail_0:
+  unregister_chrdev_region(my_dev_id, 1);
+  return -1;
 }
 
 //################################################# EXIT  ##################################################
