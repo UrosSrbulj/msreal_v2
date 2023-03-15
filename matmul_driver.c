@@ -25,37 +25,38 @@
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Drajver za mnozenje matrica");
-#define DEVICE_NAME "matrix_multiplier" //bilo vga
-#define DRIVER_NAME "matrix_multiplier_driver"//bilo vga_driver
+#define DEVICE_NAME "matmul" //bilo vga
+#define DRIVER_NAME "matmul_driver"//bilo vga_driver
 #define BUFF_SIZE 250
 
 
 //*******************PROTOTIPI FUNKCIJA************************************
 
-static int matrix_multiplier_probe(struct platform_device *pdev);
-static int matrix_multiplier_open(struct inode *i, struct file *f);
-static int matrix_multiplier_close(struct inode *i, struct file *f);
-static ssize_t matrix_multiplier_read(struct file *f, char __user *buf, size_t len, loff_t *off);
-static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, size_t length, loff_t *off);
-static int __init matrix_multiplier_init(void);
-static void __exit matrix_multiplier_exit(void);
-static int matrix_multiplier_remove(struct platform_device *pdev);
+static int matmul_probe(struct platform_device *pdev);
+static int matmul_open(struct inode *i, struct file *f);
+static int matmul_close(struct inode *i, struct file *f);
+static ssize_t matmul_read(struct file *f, char __user *buf, size_t len, loff_t *off);
+static ssize_t matmul_write(struct file *f, const char __user *buf, size_t length, loff_t *off);
+static int __init matmul_init(void);
+static void __exit matmul_exit(void);
+static int matmul_remove(struct platform_device *pdev);
 
 //*********************GLOBALNE PROMENLJIVE*************************************
-struct matrix_multiplier_info {
+struct matmul_info {
   unsigned long mem_start;
   unsigned long mem_end;
   void __iomem *base_addr;
-};
+    };
+    
 static struct cdev *my_cdev;
 static dev_t my_dev_id;
 static struct class *my_class;
 static struct device *my_device;
-static int int_cnt;
-static struct matrix_multiplier_info *va = NULL;
-static struct matrix_multiplier_info *vb = NULL;
-static struct matrix_multiplier_info *vc = NULL;
-static struct matrix_multiplier_info *vm = NULL;
+
+static struct matmul_info *va = NULL;
+static struct matmul_info *vb = NULL;
+static struct matmul_info *vc = NULL;
+static struct matmul_info *vm = NULL;
 
 unsigned int koliko_unetih_brojeva_a;
 unsigned int uneti_brojevi_a_reverse[BUFF_SIZE];
@@ -72,20 +73,20 @@ unsigned int uneti_brojevi_c_reverse[BUFF_SIZE];
 unsigned int uneti_brojevi_c[BUFF_SIZE];
 unsigned int uneti_brojevi_c_matrix[8][8];
 
-//unsigned int rezultat_mnozenja[8][8];
+
 
 //*********************OPERACIJE NAD NODE FAJLOVIMA*************************************
 static struct file_operations my_fops =
   {
     .owner = THIS_MODULE,
-    .open = matrix_multiplier_open,
-    .release = matrix_multiplier_close,
-    .read = matrix_multiplier_read,
-    .write = matrix_multiplier_write
+    .open = matmul_open,
+    .release = matmul_close,
+    .read = matmul_read,
+    .write = matmul_write
   };
 
 //*********************POVEZUJE INFORMACIJE SA STABLOM UREĐAJA*************************************  
-static struct of_device_id matrix_multiplier_of_match[] = {
+static struct of_device_id matmul_of_match[] = {
   { .compatible = "xlnx,axi-bram-ctrl-A", },
   { .compatible = "xlnx,axi-bram-ctrl-B", },
   { .compatible = "xlnx,axi-bram-ctrl-C", },
@@ -93,24 +94,24 @@ static struct of_device_id matrix_multiplier_of_match[] = {
   { /* end of list */ },
 };
 
-static struct platform_driver matrix_multiplier_driver = {
+static struct platform_driver matmul_driver = {
   .driver = {
     .name = DRIVER_NAME,
     .owner = THIS_MODULE,
-    .of_match_table	= matrix_multiplier_of_match,
+    .of_match_table	= matmul_of_match,
   },
-  .probe		= matrix_multiplier_probe,
-  .remove	= matrix_multiplier_remove,
+  .probe		= matmul_probe,
+  .remove	= matmul_remove,
 };
 
-MODULE_DEVICE_TABLE(of, matrix_multiplier_of_match);
+MODULE_DEVICE_TABLE(of, matmul_of_match);
 
 
-//***************************************************************************
+
 
 //*********************PROBE AND REMOVE*************************************  
 
-static int matrix_multiplier_probe(struct platform_device *pdev)
+static int matmul_probe(struct platform_device *pdev)
 {
   struct resource *r_mem;
   struct resource *r_mem2;
@@ -126,13 +127,13 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
   // Get phisical register adress space from device tree
   r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
   if (!r_mem) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Failed to get reg resource\n");
+    printk(KERN_ALERT "matmul_probe: Failed to get reg resource\n");
     return -ENODEV;
   }
   // Get memory for structure vga_info
-  va = (struct matrix_multiplier_info *) kmalloc(sizeof(struct matrix_multiplier_info), GFP_KERNEL);
+  va = (struct matmul_info *) kmalloc(sizeof(struct matmul_info), GFP_KERNEL);
   if (!va) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not allocate timer device\n");
+    printk(KERN_ALERT "matmul_probe: Could not allocate timer device\n");
     return -ENOMEM;
   }
   // Put phisical adresses in timer_info structure
@@ -144,7 +145,7 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
   // Reserve that memory space for this driver
   if (!request_mem_region(va->mem_start,va->mem_end - va->mem_start + 1, DRIVER_NAME))
   {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not lock memory region at %p\n",(void *)va->mem_start);
+    printk(KERN_ALERT "matmul_probe: Could not lock memory region at %p\n",(void *)va->mem_start);
     rc = -EBUSY;
     goto error1;
   }    
@@ -152,12 +153,12 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
 
   va->base_addr = ioremap(va->mem_start, va->mem_end - va->mem_start + 1);
   if (!va->base_addr) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not allocate memory\n");
+    printk(KERN_ALERT "matmul_probe: Could not allocate memory\n");
     rc = -EIO;
     goto error2;
   }
 
-  printk(KERN_NOTICE "matrix_multiplier_probe: BRAM_CTRL_A uredjaj ubacen\n");
+  printk(KERN_NOTICE "matmul_probe: BRAM_CTRL_A uredjaj ubacen\n");
   goto kraj_probe;
  error2:
   release_mem_region(va->mem_start, va->mem_end - va->mem_start + 1);
@@ -172,13 +173,13 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
   // Get phisical register adress space from device tree
   r_mem2 = platform_get_resource(pdev, IORESOURCE_MEM, 0);
   if (!r_mem2) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Failed to get reg resource\n");
+    printk(KERN_ALERT "matmul_probe: Failed to get reg resource\n");
     return -ENODEV;
   }
   // Get memory for structure vga_info
-  vb = (struct matrix_multiplier_info *) kmalloc(sizeof(struct matrix_multiplier_info), GFP_KERNEL);
+  vb = (struct matmul_info *) kmalloc(sizeof(struct matmul_info), GFP_KERNEL);
   if (!vb) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not allocate timer device\n");
+    printk(KERN_ALERT "matmul_probe: Could not allocate timer device\n");
     return -ENOMEM;
   }
   // Put phisical adresses in timer_info structure
@@ -190,7 +191,7 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
   // Reserve that memory space for this driver
   if (!request_mem_region(vb->mem_start,vb->mem_end - vb->mem_start + 1, DRIVER_NAME))
   {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not lock memory region at %p\n",(void *)vb->mem_start);
+    printk(KERN_ALERT "matmul_probe: Could not lock memory region at %p\n",(void *)vb->mem_start);
     rc2 = -EBUSY;
     goto greska1;
   }    
@@ -198,12 +199,12 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
 
   vb->base_addr = ioremap(vb->mem_start, vb->mem_end - vb->mem_start + 1);
   if (!vb->base_addr) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not allocate memory\n");
+    printk(KERN_ALERT "matmul_probe: Could not allocate memory\n");
     rc2 = -EIO;
     goto greska2;
   }
 
-  printk(KERN_NOTICE "matrix_multiplier_probe: BRAM_CTRL_B uredjaj ubacen\n");
+  printk(KERN_NOTICE "matmul_probe: BRAM_CTRL_B uredjaj ubacen\n");
   goto kraj_probe;
  greska2:
   release_mem_region(vb->mem_start, vb->mem_end - vb->mem_start + 1);
@@ -219,13 +220,13 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
   // Get phisical register adress space from device tree
   r_mem3 = platform_get_resource(pdev, IORESOURCE_MEM, 0);
   if (!r_mem3) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Failed to get reg resource\n");
+    printk(KERN_ALERT "matmul_probe: Failed to get reg resource\n");
     return -ENODEV;
   }
   // Get memory for structure vga_info
-  vc = (struct matrix_multiplier_info *) kmalloc(sizeof(struct matrix_multiplier_info), GFP_KERNEL);
+  vc = (struct matmul_info *) kmalloc(sizeof(struct matmul_info), GFP_KERNEL);
   if (!vc) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not allocate timer device\n");
+    printk(KERN_ALERT "matmul_probe: Could not allocate timer device\n");
     return -ENOMEM;
   }
   // Put phisical adresses in timer_info structure
@@ -237,7 +238,7 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
   // Reserve that memory space for this driver
   if (!request_mem_region(vc->mem_start,vc->mem_end - vc->mem_start + 1, DRIVER_NAME))
   {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not lock memory region at %p\n",(void *)vc->mem_start);
+    printk(KERN_ALERT "matmul_probe: Could not lock memory region at %p\n",(void *)vc->mem_start);
     rc3 = -EBUSY;
     goto greska3;
   }    
@@ -245,12 +246,12 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
 
   vc->base_addr = ioremap(vc->mem_start, vc->mem_end - vc->mem_start + 1);
   if (!vc->base_addr) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not allocate memory\n");
+    printk(KERN_ALERT "matmul_probe: Could not allocate memory\n");
     rc3 = -EIO;
     goto greska4;
   }
 
-  printk(KERN_NOTICE "matrix_multiplier_probe: BRAM_CTRL_C uredjaj ubacen\n");
+  printk(KERN_NOTICE "matmul_probe: BRAM_CTRL_C uredjaj ubacen\n");
   goto kraj_probe;
  greska4:
   release_mem_region(vc->mem_start, vc->mem_end - vc->mem_start + 1);
@@ -267,13 +268,13 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
   // Get phisical register adress space from device tree
   r_mem4 = platform_get_resource(pdev, IORESOURCE_MEM, 0);
   if (!r_mem4) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Failed to get reg resource\n");
+    printk(KERN_ALERT "matmul_probe: Failed to get reg resource\n");
     return -ENODEV;
   }
   // Get memory for structure vga_info
-  vm = (struct matrix_multiplier_info *) kmalloc(sizeof(struct matrix_multiplier_info), GFP_KERNEL);
+  vm = (struct matmul_info *) kmalloc(sizeof(struct matmul_info), GFP_KERNEL);
   if (!vm) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not allocate timer device\n");
+    printk(KERN_ALERT "matmul_probe: Could not allocate timer device\n");
     return -ENOMEM;
   }
   // Put phisical adresses in timer_info structure
@@ -285,7 +286,7 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
   // Reserve that memory space for this driver
   if (!request_mem_region(vm->mem_start,vm->mem_end - vm->mem_start + 1, DRIVER_NAME))
   {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not lock memory region at %p\n",(void *)vm->mem_start);
+    printk(KERN_ALERT "matmul_probe: Could not lock memory region at %p\n",(void *)vm->mem_start);
     rc4 = -EBUSY;
     goto greska5;
   }    
@@ -293,12 +294,12 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
 
   vm->base_addr = ioremap(vm->mem_start, vm->mem_end - vm->mem_start + 1);
   if (!vm->base_addr) {
-    printk(KERN_ALERT "matrix_multiplier_probe: Could not allocate memory\n");
+    printk(KERN_ALERT "matmul_probe: Could not allocate memory\n");
     rc4 = -EIO;
     goto greska6;
   }
 
-  printk(KERN_NOTICE "matrix_multiplier_probe: MATRIX_MULTIPLIER uredjaj ubacen\n");
+  printk(KERN_NOTICE "matmul_probe: matmul uredjaj ubacen\n");
   goto kraj_probe;//ALL OK
  greska6:
   release_mem_region(vm->mem_start, vm->mem_end - vm->mem_start + 1);
@@ -311,26 +312,26 @@ static int matrix_multiplier_probe(struct platform_device *pdev)
   return 0; //ALL ok
 }
 
-static int matrix_multiplier_remove(struct platform_device *pdev)
+static int matmul_remove(struct platform_device *pdev)
 {
  
   if((request_mem_region(va->mem_start,va->mem_end - va->mem_start + 1, DRIVER_NAME)== NULL)){
 	  
-  printk(KERN_INFO "matrix_multiplier_remove: va remove in process");
+  printk(KERN_INFO "matmul_remove: va remove in process");
   iounmap(va->base_addr);
   release_mem_region(va->mem_start, va->mem_end - va->mem_start + 1);
-  printk(KERN_INFO "matrix_multiplier_remove: matrix_multiplier_driver removed va");
+  printk(KERN_INFO "matmul_remove: matmul_driver removed va");
   goto kraj1;
   
   }
   
   else if ((request_mem_region(vb->mem_start,vb->mem_end - vb->mem_start + 1, DRIVER_NAME)== NULL)){
 	  
-  printk(KERN_INFO "matrix_multiplier_remove: vb remove in process");
+  printk(KERN_INFO "matmul_remove: vb remove in process");
   iounmap(vb->base_addr);
   release_mem_region(va->mem_start, va->mem_end - va->mem_start + 1);
   release_mem_region(vb->mem_start, vb->mem_end - vb->mem_start + 1);
-  printk(KERN_INFO "matrix_multiplier_remove: matrix_multiplier_driver removed vb");
+  printk(KERN_INFO "matmul_remove: matmul_driver removed vb");
   goto kraj1;
   
   
@@ -338,25 +339,25 @@ static int matrix_multiplier_remove(struct platform_device *pdev)
    
     else if ((request_mem_region(vc->mem_start,vc->mem_end - vc->mem_start + 1, DRIVER_NAME)== NULL)){
 		
-  printk(KERN_INFO "matrix_multiplier_remove: vc remove in process");
+  printk(KERN_INFO "matmul_remove: vc remove in process");
   iounmap(vc->base_addr);
   release_mem_region(va->mem_start, va->mem_end - va->mem_start + 1);
   release_mem_region(vb->mem_start, vb->mem_end - vb->mem_start + 1);
   release_mem_region(vc->mem_start, vc->mem_end - vc->mem_start + 1);
-  printk(KERN_INFO "matrix_multiplier_remove: matrix_multiplier_driver removed vc");
+  printk(KERN_INFO "matmul_remove: matmul_driver removed vc");
   goto kraj1;
   
   }
   
    else {
 	   
-  printk(KERN_INFO "matrix_multiplier_remove: vm remove in process");
+  printk(KERN_INFO "matmul_remove: vm remove in process");
   iounmap(vm->base_addr);
   release_mem_region(va->mem_start, va->mem_end - va->mem_start + 1);
   release_mem_region(vb->mem_start, vb->mem_end - vb->mem_start + 1);
   release_mem_region(vc->mem_start, vc->mem_end - vc->mem_start + 1);
   release_mem_region(vm->mem_start, vm->mem_end - vm->mem_start + 1);
-  printk(KERN_INFO "matrix_multiplier_remove: matrix_multiplier_driver removed vm");
+  printk(KERN_INFO "matmul_remove: matmul_driver removed vm");
   goto kraj2;
   
   }
@@ -370,21 +371,21 @@ static int matrix_multiplier_remove(struct platform_device *pdev)
   return 0;
 }
 
-//***************************************************
-// IMPLEMENTACIJA FAJL OPERACIJA
-//***************************************************
 
-static int matrix_multiplier_open(struct inode *i, struct file *f)
+
+static int matmul_open(struct inode *i, struct file *f)
 {
-  printk(KERN_INFO "matrix_multiplier opened\n");
+  printk(KERN_INFO "matmul opened\n");
   return 0;
 }
-static int matrix_multiplier_close(struct inode *i, struct file *f)
+static int matmul_close(struct inode *i, struct file *f)
 {
-  printk(KERN_INFO "matrix_multiplier closed\n");
+  printk(KERN_INFO "matmul closed\n");
   return 0;
 }
-static ssize_t matrix_multiplier_read(struct file *f, char __user *buf, size_t len, loff_t *off)
+
+
+static ssize_t matmul_read(struct file *f, char __user *buf, size_t len, loff_t *off)
 {
   unsigned int ready_r,start_r,n_r,m_r,p_r;
   unsigned int vrednost;
@@ -392,74 +393,83 @@ static ssize_t matrix_multiplier_read(struct file *f, char __user *buf, size_t l
   unsigned int broj_kolona, broj_redova;
   int minor;
   
-  printk("matrix_multiplier read\n");
+  printk("matmul read\n");
   minor = MINOR(f->f_inode->i_rdev);
   
-  if(minor == 0){ // citamo iz bram_a
+  if(minor == 0)  // citamo iz bram_a
+  { 
 	  
-	  broj_kolona = ioread32(vm->base_addr + 12); // pročitaj m iz matmul
-	  broj_redova = ioread32(vm->base_addr + 8);  // pročitaj n iz matmul
+	      broj_kolona = ioread32(vm->base_addr + 12); // pročitaj m iz matmul
+	      broj_redova = ioread32(vm->base_addr + 8);  // pročitaj n iz matmul
 	  
-	  for (petlja_brojac = 0;petlja_brojac < (broj_kolona*broj_redova) ; petlja_brojac = petlja_brojac + 1){
+	        for (petlja_brojac = 0;petlja_brojac < (broj_kolona*broj_redova) ; petlja_brojac = petlja_brojac + 1)
+		{  
+		      vrednost = ioread32(va->base_addr + 4*petlja_brojac);
+		      printk(KERN_CONT "%u",vrednost);
 		  
-		  vrednost = ioread32(va->base_addr + 4*petlja_brojac);
-		  printk(KERN_CONT "%u",vrednost);
-		  
-		  if((petlja_brojac+1)%broj_kolona == 0){
+		  if((petlja_brojac+1)%broj_kolona == 0)
+      {
 			  
 			  printk(KERN_CONT ";");
 		  //printk("uspesno procitao va->base_addr + 4*%u\n", petlja_brojac);
 		  
 		  }
-		  else {
-			  printk(KERN_CONT ",");
-		  }
+		     else {
+			    printk(KERN_CONT ",");
+		          }
 	  }
 	  
 	  goto procitano;
   }
-  if(minor == 1){ //citamo iz bram_b
+  if(minor == 1)//citamo iz bram_b
+  { 
 	  
 	  broj_kolona = ioread32(vm->base_addr + 16); // pročitaj p iz matmul
 	  broj_redova = ioread32(vm->base_addr + 12);  // pročitaj m iz matmul
 	  
-	  for (petlja_brojac = 0;petlja_brojac < (broj_kolona*broj_redova) ; petlja_brojac = petlja_brojac + 1){
+	  for (petlja_brojac = 0;petlja_brojac < (broj_kolona*broj_redova) ; petlja_brojac = petlja_brojac + 1)
+    {
 		  
 		  vrednost = ioread32(vb->base_addr + 4*petlja_brojac);
 		  //printk("Broj kolona je %u a broj redova je %u ",broj_kolona, broj_redova);
 		  printk(KERN_CONT "%u",vrednost);
 		  
-		  if((petlja_brojac+1)%broj_kolona == 0){
+		  if((petlja_brojac+1)%broj_kolona == 0)
+      {
 			  
 			 printk(KERN_CONT ";");
 			 
 		  }
 		  else {
 			  printk(KERN_CONT ",");
-		  }
+		      }
 	  }
 	  
 	  goto procitano;
   }
-   if(minor == 2){ //citamo iz bram_c
+   if(minor == 2)
+   { //citamo iz bram_c
 	  
 	  broj_kolona = ioread32(vm->base_addr + 16); // pročitaj p iz matmul
 	  broj_redova = ioread32(vm->base_addr + 8);  // pročitaj n iz matmul
 	  
-	  for (petlja_brojac = 0;petlja_brojac < (broj_kolona*broj_redova) ; petlja_brojac = petlja_brojac + 1){
+	  for (petlja_brojac = 0;petlja_brojac < (broj_kolona*broj_redova) ; petlja_brojac = petlja_brojac + 1)
+    {
 		  
 		  vrednost = ioread32(vc->base_addr + 4*petlja_brojac);
 		  //printk("Broj kolona je %u a broj redova je %u ",broj_kolona, broj_redova);
 		  printk(KERN_CONT "%u",vrednost);
 		  
-		  if((petlja_brojac+1)%broj_kolona == 0){
+		  if((petlja_brojac+1)%broj_kolona == 0)
+        {
 			  
 			 printk(KERN_CONT ";");
 			 
-		  }
-		  else {
+		    }
+		  else 
+          {
 			  printk(KERN_CONT ",");
-		  }
+		      }
 	  }
 	  
 	  goto procitano;
@@ -478,7 +488,9 @@ static ssize_t matrix_multiplier_read(struct file *f, char __user *buf, size_t l
   procitano:
   return 0;
 }
-static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, size_t length, loff_t *off)
+
+
+static ssize_t matmul_write(struct file *f, const char __user *buf, size_t length, loff_t *off)
 {	
 	char buff[BUFF_SIZE];
 	char buff_pomocni[2];
@@ -498,7 +510,7 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	unsigned long drugi_manji;
 	unsigned int manji_indeks, veci_indeks, koliko_cifara;
 	unsigned long broj_ceo;
-    unsigned int xpos,ypos;
+    
 	char *dimenzija_m;
 	char *dimenzija_p;
 	unsigned prava_dim_n = 0;
@@ -512,19 +524,16 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	int i,k,brojac, upis;
 	unsigned int u, q;
 	char prvi[BUFF_SIZE];
-	unsigned long long rgb;
+	
 	u = 0;
 	i = 0;
 	k = 0;
-	//p = 0;
+	
 	brojac = 0;
 	upis = 0;
    
     ret = 0;
-    xpos = 0;
-    ypos = 0;
-    rgb = 0;
-  
+    
     minor = MINOR(f->f_inode->i_rdev);
     ret = copy_from_user(buff, buf, length); 
   
@@ -691,20 +700,7 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 				  
 				  
 			  } // kraj for sa i
-			  //***************IZRACUNATO MNOZENJE IZNAD***********************************************************
-			  /*
-			  for( i = 0 ; i < broj_redova_a ; i = i + 1){	
-				
-					for(k = 0 ; k < broj_kolona_b ; k = k + 1){
-						
-						printk(KERN_WARNING "VGA_write: Rezultat mnozenja : uneti_brojevi_c_matrix[%u][%u] = %u\n",i, k, uneti_brojevi_c_matrix[i][k]);
-						
-					}
-			}
-			  
-			  */
-			  //*****************************************************************************************
-			  
+			 
 				  goto zavrsetak;
 			  }
 			  
@@ -726,11 +722,10 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	  brojac = 0;
 	  prava_dim_m = 0;
 	  dimenzija_m = strchr(buff, ';'); // trazi prvo pojavljivanje znaka ; u stringu buff i taj broj smesta u dimenzija_p
-	  //printk(KERN_WARNING "VGA_write: dimenzija_p = %u\n",dimenzija_p); // ovo daje samo adresu jer je pokazivac
+	  
 	  
 	  razlika_adresa = dimenzija_m - buff;
 	  
-	  //printk(KERN_WARNING "VGA_write: razlika_adresa = %d\n",razlika_adresa); //ovo je razlika adresa za potrebe debugovanja
 	  
 	  for( i=0; i<razlika_adresa; i=i+1 ){
 		  
@@ -750,9 +745,8 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 		  
 	  }
 	  printk(KERN_WARNING "VGA_write: dimenzija_n = %u\n",prava_dim_n); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
-	  //printk(KERN_WARNING "VGA_write: Duzina buff = %d\n",length);
-	   
 	  
+	   
 	  for(i=0 ; i<length; i=i+1){  //sluzi da smesti pozicije zareza
 		  
 		  if((buff[i]==',') || (buff[i]==';')){
@@ -766,11 +760,6 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	  }
 	  
 	  
-	  for(i=0 ; i<length; i=i+1){ // sluzi da ispise pozicije zareza za potrebe debugovanja
-	  
-		//printk(KERN_WARNING "VGA_write: pozicija_zareza[%u] = %u\n",i, pozicija_zareza[i]);
-	  
-	  }
 	  //**********FUNKCIJA ZA RACUNANJE BROJA CIFARA I KOJE SU TO CIFRE***********************
 	  i = length - 1;
 	  u = 0; // brojac za niz uneti_brojevi_b,a
@@ -786,14 +775,14 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 				//printk(KERN_WARNING "VGA_write: usao u petlju sa k = %d", k);
 				if((pozicija_zareza[k]!=0) || (k==0)){
 					manji_indeks = pozicija_zareza[k];
-					//printk(KERN_WARNING "VGA_write: manji indeks je = %u", manji_indeks);
+					
 					if(k==0){
 						koliko_cifara = veci_indeks-manji_indeks;
 					}
 					else{
 					koliko_cifara = veci_indeks-manji_indeks-1;
 					}
-					//printk(KERN_WARNING "VGA_write: koliko cifara je = %u", koliko_cifara);
+					
 					
 					switch(koliko_cifara){
 						case 1:
@@ -827,7 +816,7 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 							broj_ceo=drugi;
 							break;
 					}
-					//printk(KERN_WARNING "VGA_write: broj_ceo = %lu\n",broj_ceo);
+				
 					if(broj_ceo > 4095){
 						
 						printk(KERN_WARNING "VGA_write: Neki od unetih brojeva prelazi 4095, upis se stopira.\n");
@@ -840,7 +829,7 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 					break;
 					
 				}
-				//break;
+				
 			}
 		
 		}
@@ -848,14 +837,14 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 				break;
 			}
 		 i = i - 1; 
-		 //printk(KERN_WARNING "VGA_write: tek zavrsavam i = %d\n",i);
+		 
 	  }
 	  
 	  
 	  for(i=0 ; i<u; i=i+1){ // sluzi da napravi non reverse raspored i ispise unos_brojeva_b za potrebe debugovanja
 		
 		uneti_brojevi_a[i] = uneti_brojevi_a_reverse[koliko_unetih_brojeva_a-i-1];
-	    //printk(KERN_WARNING "VGA_write: unos[%u] = %u",i, uneti_brojevi_a[i]);
+	    
 	  
 	  }
 	  
@@ -867,23 +856,11 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	  if(((koliko_unetih_brojeva_a%prava_dim_n) != 0) || ((koliko_unetih_brojeva_a%prava_dim_m) != 0)){
 		  
 		  //ovaj if kaze da ako je broj uetih brojeva mora biti broj kolone*broj reda
-		  //printk(KERN_WARNING "VGA_write: Uneo si ili vise ili manje brojeva nego sto treba.\n");
+		 
 		  goto skoro_zavrsetak;
 	  }
 	  
-	   //************ KRAJ PROVERE DA LI JE UNESENO DOVOLJNO ILI PREKO BROJEVA OD ONOGA STO TREBA******************
 	   
-	  /*
-	  for(i = 2 ; i <= prava_dim_m ; i = i+1){ // proverava da li su svi redovi i kolone iste tj. da li se svi znakovi ; nalaze na istim udaljenostima jedni od drugih
-		  	  
-	  if(buff[prava_dim_m + prava_dim_p]!=buff[i*prava_dim_p + i*prava_dim_m + i-1]){
-		  
-		  printk(KERN_WARNING "VGA_write: los unos tj. pogresan\n");
-		  goto skoro_zavrsetak;
-		  
-		}
-	  }
-	  */
 	  
 	  if((prava_dim_n == ioread32(vm->base_addr + 8)) && ((prava_dim_m==ioread32(vm->base_addr + 12)))) // proverava da li se dimenzije poklapaju sa onim iz matmul
 	  {
@@ -928,11 +905,11 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	  brojac = 0;
 	  prava_dim_p = 0;
 	  dimenzija_p = strchr(buff, ';'); // trazi prvo pojavljivanje znaka ; u stringu buff i taj broj smesta u dimenzija_p
-	  //printk(KERN_WARNING "VGA_write: dimenzija_p = %u\n",dimenzija_p); // ovo daje samo adresu jer je pokazivac
+	  
 	  
 	  razlika_adresa = dimenzija_p - buff;
 	  
-	  //printk(KERN_WARNING "VGA_write: razlika_adresa = %d\n",razlika_adresa); //ovo je razlika adresa za potrebe debugovanja
+	  
 	  
 	  for( i=0; i<razlika_adresa; i=i+1 ){
 		  
@@ -952,7 +929,7 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 		  
 	  }
 	  printk(KERN_WARNING "VGA_write: dimenzija_m = %u\n",prava_dim_m); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
-	  //printk(KERN_WARNING "VGA_write: Duzina buff = %d\n",length);
+	  
 	  
 	  
 	  for(i=0 ; i<length; i=i+1){  //sluzi da smesti pozicije zareza
@@ -968,34 +945,30 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	  }
 	  
 	  
-	  for(i=0 ; i<length; i=i+1){ // sluzi da ispise pozicije zareza za potrebe debugovanja
-	  
-		//printk(KERN_WARNING "VGA_write: pozicija_zareza[%u] = %u\n",i, pozicija_zareza[i]);
-	  
-	  }
+	
 	  //**********FUNKCIJA ZA RACUNANJE BROJA CIFARA I KOJE SU TO CIFRE***********************
 	  i = length - 1;
 	  u = 0; // brojac za niz uneti_brojevi_b
 	  while(i>=0){
-		  //printk(KERN_WARNING "VGA_write: tek poceo i = %d\n",i);
+		  
 		if(pozicija_zareza[i]!=0){
-			//printk(KERN_WARNING "VGA_write: jeste i razlicito od 0");
+			
 			
 			veci_indeks = pozicija_zareza[i];
-			//printk(KERN_WARNING "VGA_write: veci indeks je = %u", veci_indeks);
+			
 			
 			for(k = i-1; k >= 0; k = k - 1){
-				//printk(KERN_WARNING "VGA_write: usao u petlju sa k = %d", k);
+				
 				if((pozicija_zareza[k]!=0) || (k==0)){
 					manji_indeks = pozicija_zareza[k];
-					//printk(KERN_WARNING "VGA_write: manji indeks je = %u", manji_indeks);
+					
 					if(k==0){
 						koliko_cifara = veci_indeks-manji_indeks;
 					}
 					else{
 					koliko_cifara = veci_indeks-manji_indeks-1;
 					}
-					//printk(KERN_WARNING "VGA_write: koliko cifara je = %u", koliko_cifara);
+					
 					
 					switch(koliko_cifara){
 						case 1:
@@ -1029,7 +1002,7 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 							broj_ceo=drugi;
 							break;
 					}
-					//printk(KERN_WARNING "VGA_write: broj_ceo = %lu\n",broj_ceo);
+					
 					if(broj_ceo > 4095){
 						
 						printk(KERN_WARNING "VGA_write: Neki od unetih brojeva prelazi 4095, upis se stopira.\n");
@@ -1042,7 +1015,7 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 					break;
 					
 				}
-				//break;
+				
 			}
 		
 		}
@@ -1050,14 +1023,14 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 				break;
 			}
 		 i = i - 1; 
-		 //printk(KERN_WARNING "VGA_write: tek zavrsavam i = %d\n",i);
+		 
 	  }
 	  
 	  
 	  for(i=0 ; i<u; i=i+1){ // sluzi da napravi non reverse raspored i ispise unos_brojeva_b za potrebe debugovanja
 		
 		uneti_brojevi_b[i] = uneti_brojevi_b_reverse[koliko_unetih_brojeva_b-i-1];
-	    //printk(KERN_WARNING "VGA_write: unos[%u] = %u",i, uneti_brojevi_b[i]);
+	   
 	  
 	  }
 	  
@@ -1068,24 +1041,10 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	  
 	  if(((koliko_unetih_brojeva_b%prava_dim_p) != 0) || ((koliko_unetih_brojeva_b%prava_dim_m) != 0)){
 		  
-		  //ovaj if kaze da ako je broj uetih brojeva mora biti broj kolone*broj reda
-		  //printk(KERN_WARNING "VGA_write: Uneo si ili vise ili manje brojeva nego sto treba.\n");
+		  
 		  goto skoro_zavrsetak;
 	  }
 	  
-	   //************ KRAJ PROVERE DA LI JE UNESENO DOVOLJNO ILI PREKO BROJEVA OD ONOGA STO TREBA******************
-	   
-	  /*
-	  for(i = 2 ; i <= prava_dim_m ; i = i+1){ // proverava da li su svi redovi i kolone iste tj. da li se svi znakovi ; nalaze na istim udaljenostima jedni od drugih
-		  	  
-	  if(buff[prava_dim_m + prava_dim_p]!=buff[i*prava_dim_p + i*prava_dim_m + i-1]){
-		  
-		  printk(KERN_WARNING "VGA_write: los unos tj. pogresan\n");
-		  goto skoro_zavrsetak;
-		  
-		}
-	  }
-	  */
 	  
 	  if((prava_dim_p == ioread32(vm->base_addr + 16)) && ((prava_dim_m==ioread32(vm->base_addr + 12)))) // proverava da li se dimenzije poklapaju sa onim iz matmul
 	  {
@@ -1128,11 +1087,11 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	  brojac = 0;
 	  prava_dim_p = 0;
 	  dimenzija_p = strchr(buff, ';'); // trazi prvo pojavljivanje znaka ; u stringu buff i taj broj smesta u dimenzija_p
-	  //printk(KERN_WARNING "VGA_write: dimenzija_p = %u\n",dimenzija_p); // ovo daje samo adresu jer je pokazivac
+	  
 	  
 	  razlika_adresa = dimenzija_p - buff;
 	  
-	  //printk(KERN_WARNING "VGA_write: razlika_adresa = %d\n",razlika_adresa); //ovo je razlika adresa za potrebe debugovanja
+	  
 	  
 	  for( i=0; i<razlika_adresa; i=i+1 ){
 		  
@@ -1152,7 +1111,7 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 		  
 	  }
 	  printk(KERN_WARNING "VGA_write: dimenzija_n = %u\n",prava_dim_n); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
-	  //printk(KERN_WARNING "VGA_write: Duzina buff = %d\n",length);
+	  
 	  
 	  
 	  for(i=0 ; i<length; i=i+1){  //sluzi da smesti pozicije zareza
@@ -1170,32 +1129,32 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	  
 	  for(i=0 ; i<length; i=i+1){ // sluzi da ispise pozicije zareza za potrebe debugovanja
 	  
-		//printk(KERN_WARNING "VGA_write: pozicija_zareza[%u] = %u\n",i, pozicija_zareza[i]);
+		
 	  
 	  }
 	  //**********FUNKCIJA ZA RACUNANJE BROJA CIFARA I KOJE SU TO CIFRE***********************
 	  i = length - 1;
 	  u = 0; // brojac za niz uneti_brojevi_b
 	  while(i>=0){
-		  //printk(KERN_WARNING "VGA_write: tek poceo i = %d\n",i);
+		  
 		if(pozicija_zareza[i]!=0){
-			//printk(KERN_WARNING "VGA_write: jeste i razlicito od 0");
+			
 			
 			veci_indeks = pozicija_zareza[i];
-			//printk(KERN_WARNING "VGA_write: veci indeks je = %u", veci_indeks);
+			
 			
 			for(k = i-1; k >= 0; k = k - 1){
-				//printk(KERN_WARNING "VGA_write: usao u petlju sa k = %d", k);
+				
 				if((pozicija_zareza[k]!=0) || (k==0)){
 					manji_indeks = pozicija_zareza[k];
-					//printk(KERN_WARNING "VGA_write: manji indeks je = %u", manji_indeks);
+				
 					if(k==0){
 						koliko_cifara = veci_indeks-manji_indeks;
 					}
 					else{
 					koliko_cifara = veci_indeks-manji_indeks-1;
 					}
-					//printk(KERN_WARNING "VGA_write: koliko cifara je = %u", koliko_cifara);
+				
 					
 					switch(koliko_cifara){
 						case 1:
@@ -1229,20 +1188,14 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 							broj_ceo=drugi;
 							break;
 					}
-					//printk(KERN_WARNING "VGA_write: broj_ceo = %lu\n",broj_ceo);
-					/*if(broj_ceo > 4095){
-						
-						printk(KERN_WARNING "VGA_write: Neki od unetih brojeva prelazi 4095, upis se stopira.\n");
-						goto skoro_zavrsetak;
-						
-					}*/ //za bram_c nije potrebno ogranicenje unosa do 4095 po uslovu projekta
+					
 					uneti_brojevi_c_reverse[u]=broj_ceo;
 					u = u + 1;
 					koliko_unetih_brojeva_c = u;
 					break;
 					
 				}
-				//break;
+				
 			}
 		
 		}
@@ -1250,14 +1203,14 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 				break;
 			}
 		 i = i - 1; 
-		 //printk(KERN_WARNING "VGA_write: tek zavrsavam i = %d\n",i);
+		 
 	  }
 	  
 	  
 	  for(i=0 ; i<u; i=i+1){ // sluzi da napravi non reverse raspored i ispise unos_brojeva_b za potrebe debugovanja
 		
 		uneti_brojevi_c[i] = uneti_brojevi_c_reverse[koliko_unetih_brojeva_c-i-1];
-	    //printk(KERN_WARNING "VGA_write: unos[%u] = %u",i, uneti_brojevi_c[i]);
+	    
 	  
 	  }
 	  
@@ -1266,26 +1219,14 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
 	  //************PROVERA DA LI JE UNESENO DOVOLJNO ILI PREKO BROJEVA OD ONOGA STO TREBA******************
 	  
 	  
-	  if(((koliko_unetih_brojeva_c%prava_dim_p) != 0) || ((koliko_unetih_brojeva_c%prava_dim_n) != 0)){
+	  if(((koliko_unetih_brojeva_c%prava_dim_p) != 0) || ((koliko_unetih_brojeva_c%prava_dim_n) != 0))
+    {
 		  
-		  //ovaj if kaze da ako je broj uetih brojeva mora biti broj kolone*broj reda
-		  //printk(KERN_WARNING "VGA_write: Uneo si ili vise ili manje brojeva nego sto treba.\n");
+		  
 		  goto skoro_zavrsetak;
 	  }
 	  
-	   //************ KRAJ PROVERE DA LI JE UNESENO DOVOLJNO ILI PREKO BROJEVA OD ONOGA STO TREBA******************
 	   
-	  /*
-	  for(i = 2 ; i <= prava_dim_m ; i = i+1){ // proverava da li su svi redovi i kolone iste tj. da li se svi znakovi ; nalaze na istim udaljenostima jedni od drugih
-		  	  
-	  if(buff[prava_dim_m + prava_dim_p]!=buff[i*prava_dim_p + i*prava_dim_m + i-1]){
-		  
-		  printk(KERN_WARNING "VGA_write: los unos tj. pogresan\n");
-		  goto skoro_zavrsetak;
-		  
-		}
-	  }
-	  */
 	  
 	  if((prava_dim_p == ioread32(vm->base_addr + 16)) && ((prava_dim_n==ioread32(vm->base_addr + 8)))) // proverava da li se dimenzije poklapaju sa onim iz matmul
 	  {
@@ -1331,30 +1272,25 @@ static ssize_t matrix_multiplier_write(struct file *f, const char __user *buf, s
   
 } // ovo je kraj write funkcije
 
-//***************************************************
-// HELPER FUNCTIONS (STRING TO INTEGER)
 
 
-//***************************************************
-// INIT AND EXIT FUNCTIONS OF THE DRIVER
-//napravljene da prave 2 node fajla
 
-static int __init matrix_multiplier_init(void)
+static int __init matmul_init(void)
 {
 
   int ret = 0;
-  int_cnt = 0;
-  //char buff[10];
+  
+  
 
-  printk(KERN_INFO "matrix_multiplier_init: Initialize Module \"%s\"\n", DEVICE_NAME);
-  ret = alloc_chrdev_region(&my_dev_id, 0, 4, "matrix_multiplier_region");
+  printk(KERN_INFO "matmul_init: Initialize Module \"%s\"\n", DEVICE_NAME);
+  ret = alloc_chrdev_region(&my_dev_id, 0, 4, "matmul_region");
   if (ret)
   {
     printk(KERN_ALERT "<1>Failed CHRDEV!.\n");
     return -1;
   }
   printk(KERN_INFO "Succ CHRDEV!.\n");
-  my_class = class_create(THIS_MODULE, "matrix_multiplier_drv");
+  my_class = class_create(THIS_MODULE, "matmul_drv");
   if (my_class == NULL)
   {
     printk(KERN_ALERT "<1>Failed class create!.\n");
@@ -1401,12 +1337,12 @@ static int __init matrix_multiplier_init(void)
   ret = cdev_add(my_cdev, my_dev_id, 4);
   if (ret)
   {
-    printk(KERN_ERR "matrix_multiplier_init: Failed to add cdev\n");
+    printk(KERN_ERR "matmul_init: Failed to add cdev\n");
     goto fail_2;
   }
-  printk(KERN_INFO "matrix_multiplier device init.\n");
+  printk(KERN_INFO "matmul device init.\n");
 
-  return platform_driver_register(&matrix_multiplier_driver);
+  return platform_driver_register(&matmul_driver);
 
  fail_2:
   device_destroy(my_class, my_dev_id );
@@ -1418,10 +1354,10 @@ static int __init matrix_multiplier_init(void)
 
 } 
 
-static void __exit matrix_multiplier_exit(void)  		
+static void __exit matmul_exit(void)  		
 {
 
-  platform_driver_unregister(&matrix_multiplier_driver);
+  platform_driver_unregister(&matmul_driver);
   cdev_del(my_cdev);
   device_destroy(my_class, MKDEV(MAJOR(my_dev_id),0));
   device_destroy(my_class, MKDEV(MAJOR(my_dev_id),1));
@@ -1429,11 +1365,11 @@ static void __exit matrix_multiplier_exit(void)
   device_destroy(my_class, MKDEV(MAJOR(my_dev_id),3));
   class_destroy(my_class);
   unregister_chrdev_region(my_dev_id, 4);
-  printk(KERN_INFO "matrix_multiplier_exit: Exit Device Module \"%s\".\n", DEVICE_NAME);
+  printk(KERN_INFO "matmul_exit: Exit Device Module \"%s\".\n", DEVICE_NAME);
 }
 
-module_init(matrix_multiplier_init);
-module_exit(matrix_multiplier_exit);
+module_init(matmul_init);
+module_exit(mmatmul_exit);
 
 MODULE_AUTHOR ("FTN");
 MODULE_DESCRIPTION("Test Driver for VGA output.");
