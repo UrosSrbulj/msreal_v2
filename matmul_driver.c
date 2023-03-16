@@ -555,7 +555,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  
 		  if((strlen(buff)>4) || (strcmp(buff_pomocni,osmica) == 0) || (strcmp(buff_pomocni,devetka) == 0)){
 			  
-			  printk(KERN_WARNING "VGA_write: dimenzija n mora biti manja ili jednaka 7\n");
+			  printk(KERN_WARNING "Dimenzija n mora biti manja ili jednaka 7\n");
 			  goto skoro_zavrsetak;
 			  
 		  }
@@ -564,7 +564,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  ret = kstrtoull(prvi, 0, &drugi);
 		  drugi_manji=drugi;
 		  iowrite32(drugi_manji, vm->base_addr + 8);
-		  printk(KERN_WARNING "VGA_write: uspesno upisano %lu u vm->base_addr + 8\n", drugi_manji);
+		  printk(KERN_WARNING "Uspesno upisano %lu u vm->base_addr + 8\n", drugi_manji);
 		  goto zavrsetak;
 	  }
 	  
@@ -575,7 +575,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  
 		  if((strlen(buff)>4) || (strcmp(buff_pomocni,osmica) == 0) || (strcmp(buff_pomocni,devetka) == 0)){
 			  
-			  printk(KERN_WARNING "VGA_write: dimenzija m mora biti manja ili jednaka 7\n");
+			  printk(KERN_WARNING "Dimenzija m mora biti manja ili jednaka 7\n");
 			  goto skoro_zavrsetak;
 			  
 		  }
@@ -584,7 +584,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  ret = kstrtoull(prvi, 0, &drugi);
 		  drugi_manji=drugi;
 		  iowrite32(drugi_manji, vm->base_addr + 12);
-		  printk(KERN_WARNING "VGA_write: uspesno upisano %lu u vm->base_addr + 12\n", drugi_manji);
+		  printk(KERN_WARNING "Uspesno upisano %lu u vm->base_addr + 12\n", drugi_manji);
 		  goto zavrsetak;
 		  //}
 		  //else{goto skoro_zavrsetak;}
@@ -597,7 +597,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  
 		  if((strlen(buff)>4) || (strcmp(buff_pomocni,osmica) == 0) || (strcmp(buff_pomocni,devetka) == 0)){
 			  
-			  printk(KERN_WARNING "VGA_write: dimenzija p mora biti manja ili jednaka 7\n");
+			  printk(KERN_WARNING "Dimenzija p mora biti manja ili jednaka 7\n");
 			  goto skoro_zavrsetak;
 			  
 		  }
@@ -606,15 +606,15 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  ret = kstrtoull(prvi, 0, &drugi);
 		  drugi_manji=drugi;
 		  iowrite32(drugi_manji, vm->base_addr + 16);
-		  printk(KERN_WARNING "VGA_write: uspesno upisano %lu u vm->base_addr + 16\n", drugi_manji);
+		  printk(KERN_WARNING "Uspesno upisano %lu u vm->base_addr + 16\n", drugi_manji);
 		  goto zavrsetak;
 	  }
 	  
 	  else if(strncmp(buff, start, 6)==0)
     {
 		  
-		  buff_pomocni[0] = buff[6];
-	      buff_pomocni[1] = '\0';
+		    buff_pomocni[0] = buff[6];
+	        buff_pomocni[1] = '\0';
 		  
 		    buff_pomocni2[0] = buff[6];
 		    buff_pomocni2[1] = buff[7];
@@ -625,62 +625,50 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 			buff_pomocni2[6] = buff[12];
 			buff_pomocni2[7] = '\0';
 		  
-		  if((strcmp(buff_pomocni,jedan) == 0) || (strcmp(buff_pomocni,nula) == 0) || (strcmp(buff_pomocni2,trig)==0))
-      {
+		    if((strcmp(buff_pomocni,jedan) == 0) || (strcmp(buff_pomocni,nula) == 0) || (strcmp(buff_pomocni2,trig)==0))
+            {
 			  
 			  if(strcmp(buff_pomocni,jedan)==0){
 				  
 				  iowrite32(1, vm->base_addr + 4);
-				  printk(KERN_WARNING "VGA_write: uspesno upisan 1 u vm->base_addr + 4\n");
+				  printk(KERN_WARNING "Uspesno upisan 1 u vm->base_addr + 4\n");
 				  goto zavrsetak;
 			  }
 			  
 			  if(strcmp(buff_pomocni,nula)==0){
 				  
-				  if((ioread32(vm->base_addr + 4))==1){
+				if((ioread32(vm->base_addr + 4))==1){
 					  
-				  iowrite32(0, vm->base_addr + 4);
-				  printk(KERN_WARNING "VGA_write: uspesno upisana 0 posle jedinice u vm->base_addr + 4\n");
-				  printk(KERN_WARNING "VGA_write: zapocinje se mnozenje\n");
+				    iowrite32(0, vm->base_addr + 4);
+				    printk(KERN_WARNING "Uspesno upisana 0 posle jedinice u vm->base_addr + 4\n");
+				    printk(KERN_WARNING "Zapocinje se mnozenje\n");
 				  
-				  broj_redova_a = ioread32(vm->base_addr + 8);  // pročitaj n iz matmul
-				  broj_kolona_b = ioread32(vm->base_addr + 16);  // pročitaj p iz matmul
-				  broj_kolona_a = ioread32(vm->base_addr + 12);  // pročitaj m iz matmul
+				    broj_redova_a = ioread32(vm->base_addr + 8);  // pročitaj n iz matmul
+				    broj_kolona_b = ioread32(vm->base_addr + 16);  // pročitaj p iz matmul
+				    broj_kolona_a = ioread32(vm->base_addr + 12);  // pročitaj m iz matmul
 				  
-			  for( i = 0 ; i < broj_redova_a ; i = i + 1){
-				  
-				  for( k = 0 ; k < broj_kolona_b ; k = k + 1){
-					  
-					  uneti_brojevi_c_matrix[i][k] = 0;
-					  
-					  for( q = 0 ; q < broj_kolona_a ; q = q + 1){
-						  
-						  uneti_brojevi_c_matrix[i][k] = uneti_brojevi_c_matrix[i][k] + uneti_brojevi_a_matrix[i][q] * uneti_brojevi_b_matrix[q][k];
-						  
-					  } // kraj for petlje sa q	
-					  
-				  } //kraj for sa k
-				  
-				  
-			  } // kraj for sa i
-				  
-				  
-				  
-				  }
-				  
-				  else{
+			        for( i = 0 ; i < broj_redova_a ; i = i + 1){
+				        for( k = 0 ; k < broj_kolona_b ; k = k + 1){
+					        uneti_brojevi_c_matrix[i][k] = 0;
+					        for( q = 0 ; q < broj_kolona_a ; q = q + 1){
+						        uneti_brojevi_c_matrix[i][k] = uneti_brojevi_c_matrix[i][k] + uneti_brojevi_a_matrix[i][q] * uneti_brojevi_b_matrix[q][k];
+					        } // kraj for petlje sa q	
+				        } //kraj for sa k  
+			        } // kraj for sa i
+				}else{
 					  iowrite32(0, vm->base_addr + 4);
-					  printk(KERN_WARNING "VGA_write: uspesno upisana 0 u vm->base_addr + 4\n");
-				  }
-				  goto zavrsetak;
-			  }
+					  printk(KERN_WARNING "Uspesno upisana 0 u vm->base_addr + 4\n");
+				}
+				  
+                goto zavrsetak;
+            }
 			  
 			  if(strcmp(buff_pomocni2,trig)==0){
 				  
 				  iowrite32(1, vm->base_addr + 4);
-				  printk(KERN_WARNING "VGA_write: uspesno upisan 1 u vm->base_addr + 4\n");
+				  printk(KERN_WARNING "Uspesno upisan 1 u vm->base_addr + 4\n");
 				  iowrite32(0, vm->base_addr + 4);
-				  printk(KERN_WARNING "VGA_write: uspesno upisana 0 u vm->base_addr + 4\n");
+				  printk(KERN_WARNING "Uspesno upisana 0 u vm->base_addr + 4\n");
 				  
 				  broj_redova_a = ioread32(vm->base_addr + 8);  // pročitaj n iz matmul
 				  broj_kolona_b = ioread32(vm->base_addr + 16);  // pročitaj p iz matmul
@@ -709,7 +697,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  }
 		  else{
 			  
-			  printk(KERN_WARNING "VGA_write: start moze imati vrednosti 0,1 ili trigger\n");
+			  printk(KERN_WARNING "Start moze imati vrednosti 0,1 ili trigger\n");
 			  goto skoro_zavrsetak; 
 			  
 		  }
@@ -737,7 +725,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  
 	  }
 	  prava_dim_m = prava_dim_m + 1; // treba da bi se dobila tacna vrednost jer je na kraju reda uvek ; a ne ,
-	  printk(KERN_WARNING "VGA_write: dimenzija_m = %d\n",prava_dim_m); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
+	  printk(KERN_WARNING "Dimenzija_m = %d\n",prava_dim_m); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
 	  
 	  for( i=0; i<length; i=i+1 ){
 		  
@@ -746,7 +734,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  }
 		  
 	  }
-	  printk(KERN_WARNING "VGA_write: dimenzija_n = %u\n",prava_dim_n); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
+	  printk(KERN_WARNING "Dimenzija_n = %u\n",prava_dim_n); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
 	  
 	   
 	  for(i=0 ; i<length; i=i+1){  //sluzi da smesti pozicije zareza
@@ -766,15 +754,15 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 	  i = length - 1;
 	  u = 0; // brojac za niz uneti_brojevi_b,a
 	  while(i>=0){
-		  //printk(KERN_WARNING "VGA_write: tek poceo i = %d\n",i);
+		  
 		if(pozicija_zareza[i]!=0){
-			//printk(KERN_WARNING "VGA_write: jeste i razlicito od 0");
+			
 			
 			veci_indeks = pozicija_zareza[i];
-			//printk(KERN_WARNING "VGA_write: veci indeks je = %u", veci_indeks);
+			
 			
 			for(k = i-1; k >= 0; k = k - 1){
-				//printk(KERN_WARNING "VGA_write: usao u petlju sa k = %d", k);
+				
 				if((pozicija_zareza[k]!=0) || (k==0)){
 					manji_indeks = pozicija_zareza[k];
 					
@@ -821,7 +809,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 				
 					if(broj_ceo > 4095){
 						
-						printk(KERN_WARNING "VGA_write: Neki od unetih brojeva prelazi 4095, upis se stopira.\n");
+						printk(KERN_WARNING "Neki od unetih brojeva prelazi 4095, upis se stopira.\n");
 						goto skoro_zavrsetak;
 						
 					}
@@ -871,7 +859,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  
 		  upis = uneti_brojevi_a[i];
 		  iowrite32(upis, va->base_addr + 4*i);
-		  printk(KERN_WARNING "VGA_write: upisano %u u va->base_addr + 4*%u\n",upis, i);
+		  printk(KERN_WARNING "Upisano %u u va->base_addr + 4*%u\n",upis, i);
 		  
 		  }
 
@@ -883,16 +871,16 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 						
 						uneti_brojevi_a_matrix[i][k] = uneti_brojevi_a[u];
 						u = u + 1;
-						printk(KERN_WARNING "VGA_write: uneti_brojevi_a_matrix[%u][%u] = %u\n",i, k, uneti_brojevi_a_matrix[i][k]);
+						printk(KERN_WARNING "uneti_brojevi_a_matrix[%u][%u] = %u\n",i, k, uneti_brojevi_a_matrix[i][k]);
 						
 					}
 			}
 			//*************kraj prebacivanja u matricu***********************************************************************
-	  printk(KERN_WARNING "VGA_write: poklapaju se n,m i p iz matmul i ovi uneti");
+	  printk(KERN_WARNING "Poklapaju se n,m i p iz matmul i ovi uneti");
 	  goto zavrsetak; 
 	  }
 	  else{
-	    printk(KERN_WARNING "VGA_write: ne poklapaju se n,m i/ili p iz matmul i ovi uneti");
+	    printk(KERN_WARNING "Ne poklapaju se n,m i/ili p iz matmul i ovi uneti");
 	    goto skoro_zavrsetak; 
 	  }
 	  
@@ -921,7 +909,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  
 	  }
 	  prava_dim_p = prava_dim_p + 1; // treba da bi se dobila tacna vrednost jer je na kraju reda uvek ; a ne ,
-	  printk(KERN_WARNING "VGA_write: dimenzija_p = %d\n",prava_dim_p); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
+	  printk(KERN_WARNING "Dimenzija_p = %d\n",prava_dim_p); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
 	  
 	  for( i=0; i<length; i=i+1 ){
 		  
@@ -930,7 +918,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  }
 		  
 	  }
-	  printk(KERN_WARNING "VGA_write: dimenzija_m = %u\n",prava_dim_m); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
+	  printk(KERN_WARNING "Dimenzija_m = %u\n",prava_dim_m); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
 	  
 	  
 	  
@@ -946,8 +934,6 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  
 	  }
 	  
-	  
-	
 	  //**********FUNKCIJA ZA RACUNANJE BROJA CIFARA I KOJE SU TO CIFRE***********************
 	  i = length - 1;
 	  u = 0; // brojac za niz uneti_brojevi_b
@@ -1007,7 +993,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 					
 					if(broj_ceo > 4095){
 						
-						printk(KERN_WARNING "VGA_write: Neki od unetih brojeva prelazi 4095, upis se stopira.\n");
+						printk(KERN_WARNING "Neki od unetih brojeva prelazi 4095, upis se stopira.\n");
 						goto skoro_zavrsetak;
 						
 					}
@@ -1055,7 +1041,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  
 		  upis = uneti_brojevi_b[i];
 		  iowrite32(upis, vb->base_addr + 4*i);
-		  printk(KERN_WARNING "VGA_write: upisano %u u vb->base_addr + 4*%u\n",upis, i);
+		  printk(KERN_WARNING "Upisano %u u vb->base_addr + 4*%u\n",upis, i);
 		  
 		  } 
 		  
@@ -1067,23 +1053,23 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 						
 						uneti_brojevi_b_matrix[i][k] = uneti_brojevi_b[u];
 						u = u + 1;
-						printk(KERN_WARNING "VGA_write: uneti_brojevi_b_matrix[%u][%u] = %u\n",i, k, uneti_brojevi_b_matrix[i][k]);
+						printk(KERN_WARNING "Uneti_brojevi_b_matrix[%u][%u] = %u\n",i, k, uneti_brojevi_b_matrix[i][k]);
 						
 					}
 			}
 			//*************kraj prebacivanja u matricu***********************************************************************
-	  printk(KERN_WARNING "VGA_write: poklapaju se n,m i p iz matmul i ovi uneti");
+	  printk(KERN_WARNING "Poklapaju se n,m i p iz matmul i ovi uneti");
 	  goto zavrsetak; 
 	  }
 	  else{
-	    printk(KERN_WARNING "VGA_write: ne poklapaju se n,m i/ili p iz matmul i ovi uneti");
+	    printk(KERN_WARNING "Ne poklapaju se n,m i/ili p iz matmul i ovi uneti");
 	    goto skoro_zavrsetak; 
 	  }
 	  
   //----------------------------------------------------------------------------------------------
   
   } //ovo je kraj if(minor == 1) tj. ako upisujemo u bram_b
-  
+  /*
   if(minor == 2){
 	  
 	  brojac = 0;
@@ -1103,7 +1089,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  
 	  }
 	  prava_dim_p = prava_dim_p + 1; // treba da bi se dobila tacna vrednost jer je na kraju reda uvek ; a ne ,
-	  printk(KERN_WARNING "VGA_write: dimenzija_p = %d\n",prava_dim_p); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
+	  printk(KERN_WARNING "Dimenzija_p = %d\n",prava_dim_p); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
 	  
 	  for( i=0; i<length; i=i+1 ){
 		  
@@ -1112,7 +1098,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  }
 		  
 	  }
-	  printk(KERN_WARNING "VGA_write: dimenzija_n = %u\n",prava_dim_n); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
+	  printk(KERN_WARNING "Dimenzija_n = %u\n",prava_dim_n); //ovo je dimenzija dobijena iz unosa (ne iz matmula)
 	  
 	  
 	  
@@ -1237,7 +1223,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  
 		  upis = uneti_brojevi_c[i];
 		  iowrite32(upis, vc->base_addr + 4*i);
-		  printk(KERN_WARNING "VGA_write: upisano %u u vc->base_addr + 4*%u\n",upis, i);
+		  printk(KERN_WARNING "Upisano %u u vc->base_addr + 4*%u\n",upis, i);
 		  
 		  } 
 		  
@@ -1249,25 +1235,25 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 						
 						uneti_brojevi_c_matrix[i][k] = uneti_brojevi_c[u];
 						u = u + 1;
-						printk(KERN_WARNING "VGA_write: uneti_brojevi_c_matrix[%u][%u] = %u\n",i, k, uneti_brojevi_c_matrix[i][k]);
+						printk(KERN_WARNING "Uneti_brojevi_c_matrix[%u][%u] = %u\n",i, k, uneti_brojevi_c_matrix[i][k]);
 						
 					}
 			}
 			//*************kraj prebacivanja u matricu***********************************************************************
-	  printk(KERN_WARNING "VGA_write: poklapaju se n,m i p iz matmul i ovi uneti");
+	  printk(KERN_WARNING "Poklapaju se n,m i p iz matmul i ovi uneti");
 	  goto zavrsetak; 
 	  }
 	  else{
-	    printk(KERN_WARNING "VGA_write: ne poklapaju se n,m i/ili p iz matmul i ovi uneti");
+	    printk(KERN_WARNING "Ne poklapaju se n,m i/ili p iz matmul i ovi uneti");
 	    goto skoro_zavrsetak; 
 	  }
   
   } //ovo je kraj if(minor == 2) tj. ako upisujemo u bram_c
-  
+  */
   //----------------------------------------------------------------------------------------------
   
   skoro_zavrsetak:
-  printk(KERN_WARNING "VGA_write: pogresan unos");
+  printk(KERN_WARNING "Pogresan unos");
   zavrsetak: 
   return length;
 
@@ -1279,10 +1265,7 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 
 static int __init matmul_init(void)
 {
-
   int ret = 0;
-  
-  
 
   printk(KERN_INFO "matmul_init: Initialize Module \"%s\"\n", DEVICE_NAME);
   ret = alloc_chrdev_region(&my_dev_id, 0, 4, "matmul_region");
