@@ -21,7 +21,7 @@ int main(void){
 		return -1;
 		
 	}
-	sleep(0.5);
+	
 	printf("	********************************\n");
 	printf("	**Upisujem n=2 u /dev/matmul.**\n");
 	printf("	********************************\n");
@@ -43,7 +43,7 @@ int main(void){
 		return -1;
 		
 	}
-	sleep(0.5);
+	
 	printf("	*******************************\n");
 	printf("	**Upisujem m=8 u /dev/matmul.**\n");
 	printf("	*******************************\n");
@@ -65,7 +65,7 @@ int main(void){
 		return -1;
 		
 	}
-	sleep(0.5);
+	
 	printf("	*******************************\n");
 	printf("	**Upisujem m=3 u /dev/matmul.**\n");
 	printf("	*******************************\n");
@@ -87,7 +87,7 @@ int main(void){
 		return -1;
 		
 	}
-	sleep(0.5);
+	
 	printf("	*******************************\n");
 	printf("	**Upisujem p=4 u /dev/matmul.**\n");
 	printf("	*******************************\n");
@@ -112,7 +112,7 @@ int main(void){
 		
 	}
 	
-	sleep(0.5);
+	
 	printf("	****************************************\n");
 	printf("	**Upisujem 1,2;3,4,5,6; u /dev/bram_a.**\n");
 	printf("	****************************************\n");
@@ -135,7 +135,7 @@ int main(void){
 		
 	}
 	
-	sleep(0.5);
+	
 	printf("	****************************************\n");
 	printf("	**Upisujem 1,2,3;4,5,6; u /dev/bram_a.**\n");
 	printf("	****************************************\n");
@@ -158,7 +158,7 @@ int main(void){
 		return -1;
 		
 	}
-	sleep(0.5);
+	
 	printf("	**********************************************************\n");
 	printf("	**Upisujem 1,2,3,4;5,6,5014,8;9,10,11,12; u /dev/bram_b.**\n");
 	printf("	**********************************************************\n");
@@ -180,7 +180,7 @@ int main(void){
 		return -1;
 		
 	}
-	sleep(0.5);
+	
 	printf("	*******************************************************\n");
 	printf("	**Upisujem 1,2,3,4;5,6,7,8;9,10,11,12; u /dev/bram_b.**\n");
 	printf("	*******************************************************\n");
@@ -203,11 +203,11 @@ fp = fopen("/dev/matmul", "w");
 		return -1;
 		
 	}
-	sleep(0.5);
+	
 	printf("	*****************************************\n");
 	printf("	**Upisujem start=1 u /dev/matmul.**\n");
 	printf("	*****************************************\n");
-	sleep(0.5);
+	
 	fputs("start=1",fp);
 	
 	if(fclose(fp)){
@@ -226,11 +226,11 @@ fp = fopen("/dev/matmul", "w");
 		return -1;
 		
 	}
-	sleep(0.5);
+	
 	printf("	*****************************************\n");
 	printf("	**Upisujem start=0 u /dev/matmul.**\n");
 	printf("	*****************************************\n");
-	sleep(0.5);
+	
 	fputs("start=0",fp);
 	
 	if(fclose(fp)){
@@ -251,11 +251,11 @@ fp = fopen("/dev/matmul", "w");
 		return -1;
 		
 	}
-	sleep(0.5);
+	
 	printf("	*****************************************\n");
 	printf("	**Upisujem start=trigger u /dev/matmul.**\n");
 	printf("	*****************************************\n");
-	sleep(0.5);
+	
 	fputs("start=trigger",fp);
 	
 	if(fclose(fp)){
@@ -267,7 +267,7 @@ fp = fopen("/dev/matmul", "w");
 	
 	//*********POKRENUTNO MNOZENJE MATRICA************
 	
-	sleep(0.5);
+	
 	printf("	*************************\n");
 	printf("	**Rezultat mnozenja je:**\n");
 	printf("	*************************\n");
