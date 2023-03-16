@@ -207,7 +207,7 @@ fp = fopen("/dev/matmul", "w");
 	printf("	*****************************************\n");
 	printf("	**Upisujem start=1 u /dev/matmul.**\n");
 	printf("	*****************************************\n");
-	
+	sleep(0.5);
 	fputs("start=1",fp);
 	
 	if(fclose(fp)){
@@ -230,7 +230,7 @@ fp = fopen("/dev/matmul", "w");
 	printf("	*****************************************\n");
 	printf("	**Upisujem start=0 u /dev/matmul.**\n");
 	printf("	*****************************************\n");
-	
+	sleep(0.5);
 	fputs("start=0",fp);
 	
 	if(fclose(fp)){
@@ -255,7 +255,7 @@ fp = fopen("/dev/matmul", "w");
 	printf("	*****************************************\n");
 	printf("	**Upisujem start=trigger u /dev/matmul.**\n");
 	printf("	*****************************************\n");
-	
+	sleep(0.5);
 	fputs("start=trigger",fp);
 	
 	if(fclose(fp)){
