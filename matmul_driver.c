@@ -610,7 +610,8 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 		  goto zavrsetak;
 	  }
 	  
-	  else if(strncmp(buff, start, 6)==0){
+	  else if(strncmp(buff, start, 6)==0)
+    {
 		  
 		  buff_pomocni[0] = buff[6];
 	      buff_pomocni[1] = '\0';
@@ -624,7 +625,8 @@ static ssize_t matmul_write(struct file *f, const char __user *buf, size_t lengt
 			buff_pomocni2[6] = buff[12];
 			buff_pomocni2[7] = '\0';
 		  
-		  if((strcmp(buff_pomocni,jedan) == 0) || (strcmp(buff_pomocni,nula) == 0) || (strcmp(buff_pomocni2,trig)==0)){
+		  if((strcmp(buff_pomocni,jedan) == 0) || (strcmp(buff_pomocni,nula) == 0) || (strcmp(buff_pomocni2,trig)==0))
+      {
 			  
 			  if(strcmp(buff_pomocni,jedan)==0){
 				  
@@ -1369,7 +1371,7 @@ static void __exit matmul_exit(void)
 }
 
 module_init(matmul_init);
-module_exit(mmatmul_exit);
+module_exit(matmul_exit);
 
 MODULE_AUTHOR ("FTN");
 MODULE_DESCRIPTION("Test Driver for VGA output.");
