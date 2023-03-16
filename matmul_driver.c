@@ -395,7 +395,7 @@ static ssize_t matmul_read(struct file *f, char __user *buf, size_t len, loff_t 
   
   printk("matmul read\n");
   minor = MINOR(f->f_inode->i_rdev);
-  
+  /*
   if(minor == 0)  // citamo iz bram_a
   { 
 	  
@@ -447,6 +447,7 @@ static ssize_t matmul_read(struct file *f, char __user *buf, size_t len, loff_t 
 	  
 	  goto procitano;
   }
+  */
    if(minor == 2)
    { //citamo iz bram_c
 	  
