@@ -27,7 +27,7 @@ int main(void){
 	printf("	********************************\n");
 	
 	fputs("n=2",fp);
-	
+	 
 	if(fclose(fp)){
 		
 		printf("Problem pri zatvaranju /dev/matmul.\n");
@@ -195,7 +195,7 @@ int main(void){
 	}
 	//********ZAVRSEN UPIS U BRAM_B************
 	
-	fp = fopen("/dev/matmul", "w");
+fp = fopen("/dev/matmul", "w");
 	
 	if(fp==NULL){
 		
@@ -204,11 +204,11 @@ int main(void){
 		
 	}
 	sleep(0.5);
-	printf("	**************************************\n");
-	printf("	**Upisujem start=haha u /dev/matmul.**\n");
-	printf("	**************************************\n");
+	printf("	*****************************************\n");
+	printf("	**Upisujem start=1 u /dev/matmul.**\n");
+	printf("	*****************************************\n");
 	
-	fputs("start=haha",fp);
+	fputs("start=1",fp);
 	
 	if(fclose(fp)){
 		
@@ -216,6 +216,32 @@ int main(void){
 		return -1;	
 		
 	}
+
+
+fp = fopen("/dev/matmul", "w");
+	
+	if(fp==NULL){
+		
+		printf("Nije moguce otvoriti /dev/matmul.\n");
+		return -1;
+		
+	}
+	sleep(0.5);
+	printf("	*****************************************\n");
+	printf("	**Upisujem start=0 u /dev/matmul.**\n");
+	printf("	*****************************************\n");
+	
+	fputs("start=0",fp);
+	
+	if(fclose(fp)){
+		
+		printf("Problem pri zatvaranju /dev/matmul.\n");
+		return -1;	
+		
+	}
+
+
+
 	
 	fp = fopen("/dev/matmul", "w");
 	
