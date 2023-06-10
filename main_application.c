@@ -22,10 +22,11 @@
 
 
 // TASK PRIORITIES 
-#define	TASK_SERIAL_SEND_PRI		( tskIDLE_PRIORITY + 2 )
-#define TASK_SERIAl_REC_PRI			( tskIDLE_PRIORITY + 3 )
+#define	TASK_SERIAL_SEND_PRI		( tskIDLE_PRIORITY + 3 )
+#define TASK_SERIAl_REC_PRI			( tskIDLE_PRIORITY + 4 )
 #define	SERVICE_TASK_PRI			( tskIDLE_PRIORITY + 1 )
-//#define	OBRADA_TASK_PRI				( tskIDLE_PRIORITY + 1 )
+#define ALARM_TASK_PRI                ( tskIDLE_PRIORITY + 2 )
+
 
 
 // TASKS: FORWARD DECLARATIONS 
@@ -36,12 +37,15 @@ void Obrada_vrata_Task(void* pvParameters);
 void Obrada_brzine_Task(void* pvParameters);
 void Led_Displej_Task(void* pvParameters);
 void Alarm_Task(void* pvParameters);
- void SerialSend_Task(void* pvParameters);
+void SerialSend_Task(void* pvParameters);
+void SerialReceive_Task1(void* pvParameters);
+static void TimerCallback(TimerHandle_t tH);
+void Alarm_Task1(void* pvParameters);
 
 
 // TRASNMISSION DATA - CONSTANT IN THIS APPLICATION 
 
-
+static uint8_t alarm;
 
 
 // RECEPTION DATA BUFFER - COM 0
@@ -82,7 +86,11 @@ static QueueHandle_t Serial_Queue2;
 static QueueHandle_t Serial_Queue3;
 static QueueHandle_t Serial_Queue4;
 static QueueHandle_t Serial_Queue5;
+static QueueHandle_t Serial_Queue6;
 
+TimerHandle_t tH;
+SemaphoreHandle_t Timer_Semaphore;
+SemaphoreHandle_t Timer_Semaphore1;
 SemaphoreHandle_t Send_Semaphore;
 SemaphoreHandle_t RXC_BinarySemaphore;
 SemaphoreHandle_t LED_INT_BinarySemaphore;
@@ -110,7 +118,7 @@ static uint32_t OnLED_ChangeInterrupt(void) {	// OPC - ON INPUT CHANGE - INTERRU
 }
 
 /*
-static uint32_t prvProcessTBEInterrupt(void) {	// TBE - TRANSMISSION BUFFER EMPTY - INTERRUPT HANDLER 
+static uint32_t prvProcessTBEInterrupt(void) {	// TBE - TRANSMISSION BUFFER EMPTY - INTERRUPT HANDLER
 	BaseType_t xHigherPTW = pdFALSE;
 
 	xSemaphoreGiveFromISR(TBE_BinarySemaphore, &xHigherPTW);
@@ -136,10 +144,12 @@ void main_demo(void) {
 
 	// BINARY SEMAPHORES
 	Send_Semaphore = xSemaphoreCreateBinary();
+	Timer_Semaphore = xSemaphoreCreateBinary();
+	Timer_Semaphore1 = xSemaphoreCreateBinary();
 	LED_INT_BinarySemaphore = xSemaphoreCreateBinary();// CREATE LED INTERRUPT SEMAPHORE 
 	//TBE_BinarySemaphore = xSemaphoreCreateBinary();		// CREATE TBE SEMAPHORE - SERIAL TRANSMIT COMM 
-	RXC_BinarySemaphore = xSemaphoreCreateBinary();	
-	//RXC1_BinarySemaphore = xSemaphoreCreateBinary();		// CREATE RXC SEMAPHORE - SERIAL RECEIVE COMM
+	RXC_BinarySemaphore = xSemaphoreCreateBinary();
+	RXC1_BinarySemaphore = xSemaphoreCreateBinary();		// CREATE RXC SEMAPHORE - SERIAL RECEIVE COMM
 
 	//QUEUES
 	Serial_Queue0 = xQueueCreate(2, sizeof(Mystruct));
@@ -148,21 +158,26 @@ void main_demo(void) {
 	Serial_Queue3 = xQueueCreate(2, sizeof(Mystruct));
 	Serial_Queue4 = xQueueCreate(2, sizeof(Mystruct));
 	Serial_Queue5 = xQueueCreate(2, sizeof(Mystruct));
-//	Serial_Queue6 = xQueueCreate(2, sizeof(uint8_t));
-	// TASKS 
+	Serial_Queue6 = xQueueCreate(2, sizeof(uint8_t));
+		// TASKS 
 
 	BaseType_t status;
 	status = xTaskCreate(SerialSend_Task, "STx", configMINIMAL_STACK_SIZE, NULL, TASK_SERIAL_SEND_PRI, NULL);	// SERIAL TRANSMITTER TASK 
 	status = xTaskCreate(SerialReceive_Task0, "SRx", configMINIMAL_STACK_SIZE, NULL, TASK_SERIAl_REC_PRI, NULL);
 	status = xTaskCreate(Obrada_vrata_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);
 	status = xTaskCreate(Obrada_brzine_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);
-	status = xTaskCreate(Led_Displej_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);	
+	status = xTaskCreate(Led_Displej_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);
 	status = xTaskCreate(Alarm_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);
-   // status = xTaskCreate(SerialReceive_Task1, "SRx1", configMINIMAL_STACK_SIZE, NULL, TASK_SERIAl_REC_PRI, NULL);// SERIAL RECEIVER TASK 
+	status = xTaskCreate(SerialReceive_Task1, "SRx1", configMINIMAL_STACK_SIZE, NULL, TASK_SERIAl_REC_PRI, NULL);// SERIAL RECEIVER TASK 
+	status = xTaskCreate(Alarm_Task1, NULL, configMINIMAL_STACK_SIZE, NULL, ALARM_TASK_PRI, NULL);
 	r_point = 0;
+
 	p_point = 0;
 	t_point = 0;
+	//TIMER
 
+	tH = xTimerCreate("Timer LED", pdMS_TO_TICKS(1000), pdTRUE, 0, TimerCallback);
+	xTimerStart(tH, 0);
 
 	// START SCHEDULER
 	vTaskStartScheduler();
@@ -178,12 +193,12 @@ void SerialReceive_Task0(void* pvParameters)
 	uint8_t cc = 0;
 	uint8_t pp = 0;
 	Mystruct rec0_s;
-	while (1) 
+	while (1)
 	{
 		xSemaphoreTake(RXC_BinarySemaphore, portMAX_DELAY);// ceka na serijski prijemni interapt
 		get_serial_character(COM_CH_0, &cc);
 		get_serial_character(COM_CH_0, &pp);
-		
+
 		//printf("KANAL 0: primio karakter: %u\n", (unsigned)cc);// prikazuje primljeni karakter u cmd prompt
 
 		if (cc == 0xef) {	// EF oznacava POCETAK poruke
@@ -206,11 +221,11 @@ void SerialReceive_Task0(void* pvParameters)
 		}
 		else if (pp == 0xee)
 		{
-			
+
 			xQueueSend(Serial_Queue1, &p_buffer, 0);
 		}
 		else if (p_point < P_BUF_SIZE)
-		{ 
+		{
 			p_buffer[p_point++] = pp;
 		}
 
@@ -228,7 +243,7 @@ void Obrada_vrata_Task(void* pvParameters)
 		xQueueReceive(Serial_Queue0, &obrada_v, portMAX_DELAY);
 
 
-		
+
 
 		if (obrada_v.stanje_vrata == 0x00)
 		{
@@ -275,11 +290,11 @@ void Obrada_vrata_Task(void* pvParameters)
 			printf("GRESKA:pogreasn unos \n");
 		}
 
-	xQueueSend(Serial_Queue2, &obrada_v, 0);
+		xQueueSend(Serial_Queue2, &obrada_v, 0);
 
 
 	}
-	
+
 }
 
 void Obrada_brzine_Task(void* pvParameters)
@@ -291,11 +306,11 @@ void Obrada_brzine_Task(void* pvParameters)
 	uint8_t trenutna_brzina;
 	Mystruct obrada_b;
 
-	while(1)
+	while (1)
 	{
 
 		xQueueReceive(Serial_Queue1, &p_buffer, portMAX_DELAY);
-		
+
 
 		jedinice = p_buffer[2];
 		desetice = p_buffer[1];
@@ -305,7 +320,7 @@ void Obrada_brzine_Task(void* pvParameters)
 
 
 		xQueueReceive(Serial_Queue2, &obrada_b, portMAX_DELAY);
-		
+
 
 		if (trenutna_brzina > max_brzina && obrada_b.stanje_vrata == 0x01)
 
@@ -335,7 +350,7 @@ void Led_Displej_Task(void* pvParameters)
 	{
 		xQueueReceive(Serial_Queue3, &led_s, portMAX_DELAY);
 
-		 printf("vrata su %d\n", led_s.vrata);
+		printf("vrata su %d\n", led_s.vrata);
 
 		if (led_s.vrata != 0x05)
 		{
@@ -397,16 +412,16 @@ void Led_Displej_Task(void* pvParameters)
 void Alarm_Task(void* pvParameters)
 {
 	Mystruct alarm_s;
-	 static uint8_t tmp;
-	 uint8_t alarm;
-	 
+	static uint8_t tmp;
+	//uint8_t alarm;
+
 
 	xQueueReceive(Serial_Queue4, &alarm_s, portMAX_DELAY);
-	//xQueueReceive(Serial_Queue6, &t_buffer, portMAX_DELAY);
+
 
 	if (alarm_s.vrata == 0x05)
 	{
-		
+
 
 
 		while (1)
@@ -415,76 +430,73 @@ void Alarm_Task(void* pvParameters)
 
 
 
-				xQueueSemaphoreTake(LED_INT_BinarySemaphore, portMAX_DELAY);
+			xSemaphoreTake(LED_INT_BinarySemaphore, portMAX_DELAY);
 
-				get_LED_BAR(0, &tmp);
+			get_LED_BAR(0, &tmp);
 
-				if ((tmp & 0x01) != 0)
-				{
-					alarm = 1;
-					
-					
-					
-					set_LED_BAR(2, 0xff);
-					set_LED_BAR(3, 0x00);
-					set_LED_BAR(1, 0x00);
-						
+			if ((tmp & 0x01) != 0)
+			{
+				alarm = 1;
+				xSemaphoreGive(Timer_Semaphore, 0);
 
-					select_7seg_digit(0);
-					set_7seg_digit(0x5E);
-					select_7seg_digit(1);
-					set_7seg_digit(0x5C);
-					select_7seg_digit(2);
-					set_7seg_digit(0x5C);
-					select_7seg_digit(3);
-					set_7seg_digit(0x50);
-					select_7seg_digit(4);
-					set_7seg_digit(0x3F);
+				select_7seg_digit(0);
+				set_7seg_digit(0x5E);
+				select_7seg_digit(1);
+				set_7seg_digit(0x5C);
+				select_7seg_digit(2);
+				set_7seg_digit(0x5C);
+				select_7seg_digit(3);
+				set_7seg_digit(0x50);
+				select_7seg_digit(4);
+				set_7seg_digit(0x3F);
 
 
 
 				}
-
-				else 
-				{
-					alarm = 0;
-					set_LED_BAR(3, 0xff);
-					set_LED_BAR(2, 0x00);
-					set_LED_BAR(1, 0x00);
-					
-					select_7seg_digit(0);
-					set_7seg_digit(0x5E);
-					select_7seg_digit(1);
-					set_7seg_digit(0x5C);
-					select_7seg_digit(2);
-					set_7seg_digit(0x5C);
-					select_7seg_digit(3);
-					set_7seg_digit(0x50);
-					select_7seg_digit(4);
-					set_7seg_digit(0x6D);
-
-				}
-				
-
-				
-
-
-
 
 			
+			else if ((tmp & 0x01) == 0)
+			{
+				//xSemaphoreTake(Timer_Semaphore1, portMAX_DELAY);
+				
+				alarm = 0;
+				set_LED_BAR(3, 0x00);
+				set_LED_BAR(2, 0x00);
+				set_LED_BAR(1, 0x00);
+
+				select_7seg_digit(0);
+				set_7seg_digit(0x5E);
+				select_7seg_digit(1);
+				set_7seg_digit(0x5C);
+				select_7seg_digit(2);
+				set_7seg_digit(0x5C);
+				select_7seg_digit(3);
+				set_7seg_digit(0x50);
+				select_7seg_digit(4);
+				set_7seg_digit(0x6D);
+
+			}
+
+
+
+
+
+
+
+
 		}
 
 
 	}
 }
 
-		/*
+
 void SerialReceive_Task1(void* pvParameters)
 {
 
 	char tt = 0;
 	uint8_t naredba;
-	
+
 
 
 	while (1)
@@ -499,11 +511,8 @@ void SerialReceive_Task1(void* pvParameters)
 		if (tt == '\0d') {
 			//memcpy(poruka, t_buffer, 100);
 			printf("ispis %c \n", t_buffer[0]);
-			naredba = t_buffer[0];
-			if (naredba == '0')
-			{
-				//vTaskDelete(Alarm_Task);
-			}
+			xQueueSend(Serial_Queue6, &t_buffer,0);
+			
 			
 		}
 		else if (t_point < T_BUF_SIZE) { // pamti karaktere izmedju EF i FF
@@ -513,25 +522,25 @@ void SerialReceive_Task1(void* pvParameters)
 
 
 }
-*/
+
 
 void SerialSend_Task(void* pvParameters)
 {
 	Mystruct send_s;
-	
-	
-	
+
+
+
 
 	uint8_t n_point = 0;
-	
+
 	xSemaphoreTake(Send_Semaphore, portMAX_DELAY);
 	xQueueReceive(Serial_Queue5, &send_s, portMAX_DELAY);
 	printf("ispsi vrat: %d\n", send_s.vrata);
 
-	while (1) 
-	{   
-		
-		
+	while (1)
+	{
+
+
 		if (send_s.vrata == 0x01)
 		{
 			if (n_point > (sizeof(trigger) - 1))
@@ -539,8 +548,8 @@ void SerialSend_Task(void* pvParameters)
 			send_serial_character(COM_CH_1, trigger[n_point++]);
 
 		}
-		
-		
+
+
 		else if (send_s.vrata == 0x02)
 		{
 			if (n_point > (sizeof(trigger1) - 1))
@@ -571,9 +580,62 @@ void SerialSend_Task(void* pvParameters)
 		}
 
 		vTaskDelay(pdMS_TO_TICKS(200));// kada se koristi vremenski delay
-		
+
 	}
+
+}
+
+static void TimerCallback(TimerHandle_t tH)
+{
+	xSemaphoreTake(Timer_Semaphore, portMAX_DELAY);
+	static uint8_t i = 0;
+
 	
 
 
+	set_LED_BAR(1, 0xff);
+	set_LED_BAR(2, 0xff);
+	set_LED_BAR(3, 0xff);
+	
+
+	
+	
 }
+
+void Alarm_Task1(void* pvParameters)
+{
+	uint8_t naredba;
+
+	xQueueReceive(Serial_Queue6, &t_buffer, portMAX_DELAY);
+	naredba = t_buffer[0];
+	if (naredba == '0')
+	{
+	
+
+	set_LED_BAR(1, 0x00);
+	set_LED_BAR(2, 0x00);
+	set_LED_BAR(3, 0x00);
+	
+	
+	
+	select_7seg_digit(0);
+	set_7seg_digit(0x5E);
+	select_7seg_digit(1);
+	set_7seg_digit(0x5C);
+	select_7seg_digit(2);
+	set_7seg_digit(0x5C);
+	select_7seg_digit(3);
+	set_7seg_digit(0x50);
+	select_7seg_digit(4);
+	set_7seg_digit(0x6D);
+	
+	}
+	
+
+}
+
+	
+
+
+		
+
