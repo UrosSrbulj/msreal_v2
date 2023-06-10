@@ -36,7 +36,6 @@ void Obrada_vrata_Task(void* pvParameters);
 void Obrada_brzine_Task(void* pvParameters);
 void Led_Displej_Task(void* pvParameters);
 void Alarm_Task(void* pvParameters);
-void SerialReceive_Task1(void* pvParameters);
  void SerialSend_Task(void* pvParameters);
 
 
@@ -58,7 +57,12 @@ unsigned volatile p_point;
 uint8_t t_buffer[T_BUF_SIZE];
 unsigned volatile t_point;
 
-static char trigger[] = "Upozorenje otvorena su vrata ";
+static char trigger[] = "Upozorenje otvorena su vrata 1 ";
+static char trigger1[] = "Upozorenje otvorena su vrata 2";
+static char trigger2[] = "Upozorenje otvorena su vrata 3";
+static char trigger3[] = "Upozorenje otvorena su vrata 4";
+static char trigger4[] = "Upozorenje otvorena su vrata 5";
+
 unsigned volatile n_point;
 
 // 7-SEG NUMBER DATABASE - ALL HEX DIGITS [ 0 1 2 3 4 5 6 7 8 9 A B C D E F ]
@@ -78,7 +82,6 @@ static QueueHandle_t Serial_Queue2;
 static QueueHandle_t Serial_Queue3;
 static QueueHandle_t Serial_Queue4;
 static QueueHandle_t Serial_Queue5;
-static QueueHandle_t Serial_Queue6;
 
 SemaphoreHandle_t Send_Semaphore;
 SemaphoreHandle_t RXC_BinarySemaphore;
@@ -136,7 +139,7 @@ void main_demo(void) {
 	LED_INT_BinarySemaphore = xSemaphoreCreateBinary();// CREATE LED INTERRUPT SEMAPHORE 
 	//TBE_BinarySemaphore = xSemaphoreCreateBinary();		// CREATE TBE SEMAPHORE - SERIAL TRANSMIT COMM 
 	RXC_BinarySemaphore = xSemaphoreCreateBinary();	
-	RXC1_BinarySemaphore = xSemaphoreCreateBinary();		// CREATE RXC SEMAPHORE - SERIAL RECEIVE COMM
+	//RXC1_BinarySemaphore = xSemaphoreCreateBinary();		// CREATE RXC SEMAPHORE - SERIAL RECEIVE COMM
 
 	//QUEUES
 	Serial_Queue0 = xQueueCreate(2, sizeof(Mystruct));
@@ -145,7 +148,7 @@ void main_demo(void) {
 	Serial_Queue3 = xQueueCreate(2, sizeof(Mystruct));
 	Serial_Queue4 = xQueueCreate(2, sizeof(Mystruct));
 	Serial_Queue5 = xQueueCreate(2, sizeof(Mystruct));
-	Serial_Queue6 = xQueueCreate(2, sizeof(uint8_t));
+//	Serial_Queue6 = xQueueCreate(2, sizeof(uint8_t));
 	// TASKS 
 
 	BaseType_t status;
@@ -155,7 +158,7 @@ void main_demo(void) {
 	status = xTaskCreate(Obrada_brzine_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);
 	status = xTaskCreate(Led_Displej_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);	
 	status = xTaskCreate(Alarm_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);
-    status = xTaskCreate(SerialReceive_Task1, "SRx1", configMINIMAL_STACK_SIZE, NULL, TASK_SERIAl_REC_PRI, NULL);// SERIAL RECEIVER TASK 
+   // status = xTaskCreate(SerialReceive_Task1, "SRx1", configMINIMAL_STACK_SIZE, NULL, TASK_SERIAl_REC_PRI, NULL);// SERIAL RECEIVER TASK 
 	r_point = 0;
 	p_point = 0;
 	t_point = 0;
@@ -307,12 +310,13 @@ void Obrada_brzine_Task(void* pvParameters)
 		if (trenutna_brzina > max_brzina && obrada_b.stanje_vrata == 0x01)
 
 		{
-			//printf("vrata1 su %d\n", obrada_b.vrata);
+			printf("vrata1 su %d\n", obrada_b.vrata);
 			xSemaphoreGive(Send_Semaphore, 0);
-			xQueueSend(Serial_Queue5, &obrada_b, 0);
+			//xQueueSend(Serial_Queue5, &obrada_b, 0);
+
 			xQueueSend(Serial_Queue3, &obrada_b, 0);
 			xQueueSend(Serial_Queue4, &obrada_b, 0);
-			
+			xQueueSend(Serial_Queue5, &obrada_b, 0);
 		}
 		else
 		{
@@ -331,7 +335,7 @@ void Led_Displej_Task(void* pvParameters)
 	{
 		xQueueReceive(Serial_Queue3, &led_s, portMAX_DELAY);
 
-		// printf("vrata su %d", led_s.vrata);
+		 printf("vrata su %d\n", led_s.vrata);
 
 		if (led_s.vrata != 0x05)
 		{
@@ -394,8 +398,8 @@ void Alarm_Task(void* pvParameters)
 {
 	Mystruct alarm_s;
 	 static uint8_t tmp;
-	 uint8_t alarm = 0;
-	 uint8_t naredba;
+	 uint8_t alarm;
+	 
 
 	xQueueReceive(Serial_Queue4, &alarm_s, portMAX_DELAY);
 	//xQueueReceive(Serial_Queue6, &t_buffer, portMAX_DELAY);
@@ -418,9 +422,14 @@ void Alarm_Task(void* pvParameters)
 				if ((tmp & 0x01) != 0)
 				{
 					alarm = 1;
-
+					
+					
+					
 					set_LED_BAR(2, 0xff);
 					set_LED_BAR(3, 0x00);
+					set_LED_BAR(1, 0x00);
+						
+
 					select_7seg_digit(0);
 					set_7seg_digit(0x5E);
 					select_7seg_digit(1);
@@ -433,14 +442,16 @@ void Alarm_Task(void* pvParameters)
 					set_7seg_digit(0x3F);
 
 
+
 				}
 
-				else if((tmp & 0x01) != 0)
+				else 
 				{
 					alarm = 0;
 					set_LED_BAR(3, 0xff);
 					set_LED_BAR(2, 0x00);
-
+					set_LED_BAR(1, 0x00);
+					
 					select_7seg_digit(0);
 					set_7seg_digit(0x5E);
 					select_7seg_digit(1);
@@ -453,17 +464,7 @@ void Alarm_Task(void* pvParameters)
 					set_7seg_digit(0x6D);
 
 				}
-				else if ((ueReceive(Serial_Queue6, &t_buffer, portMAX_DELAY)) != pdFALSE)
-				{
-				naredba = t_buffer[0];
-				if (naredba == '0')
-				{
-
-					set_LED_BAR(1, 0xff);
-				}
-				}
-
-
+				
 
 				
 
@@ -477,7 +478,7 @@ void Alarm_Task(void* pvParameters)
 	}
 }
 
-			
+		/*
 void SerialReceive_Task1(void* pvParameters)
 {
 
@@ -501,7 +502,7 @@ void SerialReceive_Task1(void* pvParameters)
 			naredba = t_buffer[0];
 			if (naredba == '0')
 			{
-				vTaskDelete(Alarm_Task);
+				//vTaskDelete(Alarm_Task);
 			}
 			
 		}
@@ -512,30 +513,64 @@ void SerialReceive_Task1(void* pvParameters)
 
 
 }
-
+*/
 
 void SerialSend_Task(void* pvParameters)
 {
 	Mystruct send_s;
 	
-
+	
 	
 
-	n_point = 0;
-	xQueueSend(Serial_Queue5, &send_s, portMAX_DELAY);
+	uint8_t n_point = 0;
+	
 	xSemaphoreTake(Send_Semaphore, portMAX_DELAY);
+	xQueueReceive(Serial_Queue5, &send_s, portMAX_DELAY);
+	printf("ispsi vrat: %d\n", send_s.vrata);
+
 	while (1) 
 	{   
 		
-		//send_s.vrata = trigger[27];
-		//printf("ispis karakter : %c", send_s.vrata);
-		if (n_point > (sizeof(trigger) - 1))
-			n_point = 0;
-		send_serial_character(COM_CH_1, trigger[n_point++]);
 		
+		if (send_s.vrata == 0x01)
+		{
+			if (n_point > (sizeof(trigger) - 1))
+				n_point = 0;
+			send_serial_character(COM_CH_1, trigger[n_point++]);
 
+		}
 		
-		vTaskDelay(pdMS_TO_TICKS(50));// kada se koristi vremenski delay
+		
+		else if (send_s.vrata == 0x02)
+		{
+			if (n_point > (sizeof(trigger1) - 1))
+				n_point = 0;
+			send_serial_character(COM_CH_1, trigger1[n_point++]);
+
+		}
+		else if (send_s.vrata == 0x03)
+		{
+			if (n_point > (sizeof(trigger2) - 1))
+				n_point = 0;
+			send_serial_character(COM_CH_1, trigger2[n_point++]);
+
+		}
+		else if (send_s.vrata == 0x04)
+		{
+			if (n_point > (sizeof(trigger3) - 1))
+				n_point = 0;
+			send_serial_character(COM_CH_1, trigger3[n_point++]);
+
+		}
+		else if (send_s.vrata == 0x05)
+		{
+			if (n_point > (sizeof(trigger4) - 1))
+				n_point = 0;
+			send_serial_character(COM_CH_1, trigger4[n_point++]);
+
+		}
+
+		vTaskDelay(pdMS_TO_TICKS(200));// kada se koristi vremenski delay
 		
 	}
 	
