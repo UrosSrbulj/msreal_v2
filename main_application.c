@@ -22,11 +22,10 @@
 
 
 // TASK PRIORITIES 
-#define	TASK_SERIAL_SEND_PRI		( tskIDLE_PRIORITY + 3 )
-#define TASK_SERIAl_REC_PRI			( tskIDLE_PRIORITY + 4 )
+#define	TASK_SERIAL_SEND_PRI		( tskIDLE_PRIORITY + 2 )
+#define TASK_SERIAl_REC_PRI			( tskIDLE_PRIORITY + 3 )
 #define	SERVICE_TASK_PRI			( tskIDLE_PRIORITY + 1 )
-#define ALARM_TASK_PRI                ( tskIDLE_PRIORITY + 2 )
-
+//#define	OBRADA_TASK_PRI				( tskIDLE_PRIORITY + 1 )
 
 
 // TASKS: FORWARD DECLARATIONS 
@@ -38,14 +37,11 @@ void Obrada_brzine_Task(void* pvParameters);
 void Led_Displej_Task(void* pvParameters);
 void Alarm_Task(void* pvParameters);
 void SerialSend_Task(void* pvParameters);
-void SerialReceive_Task1(void* pvParameters);
-static void TimerCallback(TimerHandle_t tH);
-void Alarm_Task1(void* pvParameters);
 
 
 // TRASNMISSION DATA - CONSTANT IN THIS APPLICATION 
 
-static uint8_t alarm;
+
 
 
 // RECEPTION DATA BUFFER - COM 0
@@ -86,11 +82,7 @@ static QueueHandle_t Serial_Queue2;
 static QueueHandle_t Serial_Queue3;
 static QueueHandle_t Serial_Queue4;
 static QueueHandle_t Serial_Queue5;
-static QueueHandle_t Serial_Queue6;
 
-TimerHandle_t tH;
-SemaphoreHandle_t Timer_Semaphore;
-SemaphoreHandle_t Timer_Semaphore1;
 SemaphoreHandle_t Send_Semaphore;
 SemaphoreHandle_t RXC_BinarySemaphore;
 SemaphoreHandle_t LED_INT_BinarySemaphore;
@@ -144,12 +136,10 @@ void main_demo(void) {
 
 	// BINARY SEMAPHORES
 	Send_Semaphore = xSemaphoreCreateBinary();
-	Timer_Semaphore = xSemaphoreCreateBinary();
-	Timer_Semaphore1 = xSemaphoreCreateBinary();
 	LED_INT_BinarySemaphore = xSemaphoreCreateBinary();// CREATE LED INTERRUPT SEMAPHORE 
 	//TBE_BinarySemaphore = xSemaphoreCreateBinary();		// CREATE TBE SEMAPHORE - SERIAL TRANSMIT COMM 
 	RXC_BinarySemaphore = xSemaphoreCreateBinary();
-	RXC1_BinarySemaphore = xSemaphoreCreateBinary();		// CREATE RXC SEMAPHORE - SERIAL RECEIVE COMM
+	//RXC1_BinarySemaphore = xSemaphoreCreateBinary();		// CREATE RXC SEMAPHORE - SERIAL RECEIVE COMM
 
 	//QUEUES
 	Serial_Queue0 = xQueueCreate(2, sizeof(Mystruct));
@@ -158,7 +148,7 @@ void main_demo(void) {
 	Serial_Queue3 = xQueueCreate(2, sizeof(Mystruct));
 	Serial_Queue4 = xQueueCreate(2, sizeof(Mystruct));
 	Serial_Queue5 = xQueueCreate(2, sizeof(Mystruct));
-	Serial_Queue6 = xQueueCreate(2, sizeof(uint8_t));
+	//	Serial_Queue6 = xQueueCreate(2, sizeof(uint8_t));
 		// TASKS 
 
 	BaseType_t status;
@@ -168,16 +158,11 @@ void main_demo(void) {
 	status = xTaskCreate(Obrada_brzine_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);
 	status = xTaskCreate(Led_Displej_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);
 	status = xTaskCreate(Alarm_Task, NULL, configMINIMAL_STACK_SIZE, NULL, SERVICE_TASK_PRI, NULL);
-	status = xTaskCreate(SerialReceive_Task1, "SRx1", configMINIMAL_STACK_SIZE, NULL, TASK_SERIAl_REC_PRI, NULL);// SERIAL RECEIVER TASK 
-	status = xTaskCreate(Alarm_Task1, NULL, configMINIMAL_STACK_SIZE, NULL, ALARM_TASK_PRI, NULL);
+	// status = xTaskCreate(SerialReceive_Task1, "SRx1", configMINIMAL_STACK_SIZE, NULL, TASK_SERIAl_REC_PRI, NULL);// SERIAL RECEIVER TASK 
 	r_point = 0;
-
 	p_point = 0;
 	t_point = 0;
-	//TIMER
 
-	tH = xTimerCreate("Timer LED", pdMS_TO_TICKS(1000), pdTRUE, 0, TimerCallback);
-	xTimerStart(tH, 0);
 
 	// START SCHEDULER
 	vTaskStartScheduler();
@@ -413,7 +398,7 @@ void Alarm_Task(void* pvParameters)
 {
 	Mystruct alarm_s;
 	static uint8_t tmp;
-	//uint8_t alarm;
+	uint8_t alarm;
 
 
 	xQueueReceive(Serial_Queue4, &alarm_s, portMAX_DELAY);
@@ -437,7 +422,13 @@ void Alarm_Task(void* pvParameters)
 			if ((tmp & 0x01) != 0)
 			{
 				alarm = 1;
-				xSemaphoreGive(Timer_Semaphore, 0);
+
+
+
+				set_LED_BAR(2, 0xff);
+				set_LED_BAR(3, 0x00);
+				set_LED_BAR(1, 0x00);
+
 
 				select_7seg_digit(0);
 				set_7seg_digit(0x5E);
@@ -452,15 +443,12 @@ void Alarm_Task(void* pvParameters)
 
 
 
-				}
+			}
 
-			
-			else if ((tmp & 0x01) == 0)
+			else
 			{
-				//xSemaphoreTake(Timer_Semaphore1, portMAX_DELAY);
-				
 				alarm = 0;
-				set_LED_BAR(3, 0x00);
+				set_LED_BAR(3, 0xff);
 				set_LED_BAR(2, 0x00);
 				set_LED_BAR(1, 0x00);
 
@@ -490,7 +478,7 @@ void Alarm_Task(void* pvParameters)
 	}
 }
 
-
+/*
 void SerialReceive_Task1(void* pvParameters)
 {
 
@@ -511,9 +499,12 @@ void SerialReceive_Task1(void* pvParameters)
 		if (tt == '\0d') {
 			//memcpy(poruka, t_buffer, 100);
 			printf("ispis %c \n", t_buffer[0]);
-			xQueueSend(Serial_Queue6, &t_buffer,0);
-			
-			
+			naredba = t_buffer[0];
+			if (naredba == '0')
+			{
+				//vTaskDelete(Alarm_Task);
+			}
+
 		}
 		else if (t_point < T_BUF_SIZE) { // pamti karaktere izmedju EF i FF
 			t_buffer[t_point++] = tt;
@@ -522,7 +513,7 @@ void SerialReceive_Task1(void* pvParameters)
 
 
 }
-
+*/
 
 void SerialSend_Task(void* pvParameters)
 {
@@ -583,59 +574,6 @@ void SerialSend_Task(void* pvParameters)
 
 	}
 
-}
 
-static void TimerCallback(TimerHandle_t tH)
-{
-	xSemaphoreTake(Timer_Semaphore, portMAX_DELAY);
-	static uint8_t i = 0;
-
-	
-
-
-	set_LED_BAR(1, 0xff);
-	set_LED_BAR(2, 0xff);
-	set_LED_BAR(3, 0xff);
-	
-
-	
-	
-}
-
-void Alarm_Task1(void* pvParameters)
-{
-	uint8_t naredba;
-
-	xQueueReceive(Serial_Queue6, &t_buffer, portMAX_DELAY);
-	naredba = t_buffer[0];
-	if (naredba == '0')
-	{
-	
-
-	set_LED_BAR(1, 0x00);
-	set_LED_BAR(2, 0x00);
-	set_LED_BAR(3, 0x00);
-	
-	
-	
-	select_7seg_digit(0);
-	set_7seg_digit(0x5E);
-	select_7seg_digit(1);
-	set_7seg_digit(0x5C);
-	select_7seg_digit(2);
-	set_7seg_digit(0x5C);
-	select_7seg_digit(3);
-	set_7seg_digit(0x50);
-	select_7seg_digit(4);
-	set_7seg_digit(0x6D);
-	
-	}
-	
 
 }
-
-	
-
-
-		
-
